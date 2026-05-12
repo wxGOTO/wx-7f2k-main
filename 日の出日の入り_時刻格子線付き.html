@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>夜の境界線 地理院地図版</title>
+<style>
+html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',Meiryo,sans-serif;background:#111;overflow:hidden}
+#map{position:fixed;inset:0;background:#d7e3ea;touch-action:none;cursor:grab}
+#map.dragging{cursor:grabbing}
+.tile{position:absolute;width:256px;height:256px;user-select:none;-webkit-user-drag:none}
+#overlay{position:absolute;inset:0;pointer-events:none}
+.panel{position:fixed;left:12px;top:12px;z-index:5;width:min(430px,calc(100vw - 24px));color:#fff;background:rgba(20,26,32,.88);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.15);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.panel h1{font-size:16px;margin:12px 14px 8px;font-weight:700}
+.row{display:grid;grid-template-columns:102px 1fr;gap:8px;align-items:center;padding:5px 14px}
+label{font-size:13px;color:#d7dde4}
+input,select,button{font:inherit;border-radius:9px;border:1px solid rgba(255,255,255,.22);background:#10151b;color:#fff;padding:7px 9px;box-sizing:border-box;min-width:0}
+.timegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.checks{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.checks label{display:flex;align-items:center;gap:5px;color:#fff}
+input[type="checkbox"]{width:18px;height:18px}
+.buttons{display:flex;gap:8px;padding:9px 14px 12px;flex-wrap:wrap}
+button{background:#233044;cursor:pointer}
+button:hover{background:#2f4059}
+.note{font-size:11px;color:#bfc7d0;line-height:1.45;padding:0 14px 12px}
+.zoomctl{position:fixed;right:12px;bottom:72px;z-index:6;display:flex;flex-direction:column;gap:6px}
+.zoomctl button{width:46px;height:42px;font-size:24px;padding:0}
+.legend{position:fixed;left:12px;bottom:12px;z-index:5;color:#fff;background:rgba(20,26,32,.82);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.6}
+.sw{display:inline-block;width:28px;height:5px;border-radius:3px;vertical-align:middle;margin-right:7px}
+.boundary{background:#fff}.rise{background:#00d1ff}.set{background:#ffb000}
+.attr{position:fixed;right:8px;bottom:8px;z-index:5;background:rgba(255,255,255,.84);color:#111;font-size:11px;padding:3px 6px;border-radius:4px}
+.attr a{color:#004e9a}
+.status{font-size:12px;color:#e7edf5;padding:0 14px 8px}
+.gridopts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.gridopts.three{grid-template-columns:1fr 1fr 1fr}
+.smallnote{font-size:11px;color:#bfc7d0;padding:0 14px 4px}
+@media(max-width:640px){.panel{font-size:14px}.row{grid-template-columns:82px 1fr}.note{display:none}.legend{font-size:11px}}
+</style>
+</head>
+<body>
+<div id="map"><div id="tiles"></div><canvas id="overlay"></canvas></div>
+<div class="panel">
+<h1>夜の境界線・地理院地図版</h1>
+<div class="row"><label>日時</label><div class="timegrid"><input id="date" type="date"><input id="time" type="time" step="60"></div></div>
+<div class="row"><label>境界</label><select id="altitude"><option value="0">太陽高度 0.0°</option><option value="-0.833">日の出・日の入相当 -0.833°</option><option value="-6">市民薄明 -6°</option><option value="-12">航海薄明 -12°</option><option value="-18">天文薄明 -18°</option></select></div>
+<div class="row"><label>表示</label><div class="checks"><label><input id="split" type="checkbox" checked>日の出側・日の入側を色分け</label><label><input id="shade" type="checkbox" checked>夜側を薄く塗る</label><label><input id="showLabels" type="checkbox" checked>線上に時刻表示</label></div></div>
+<div class="row"><label>時刻格子</label><div class="checks"><label><input id="showTimeGrid" type="checkbox">格子線を表示</label><label><input id="showGridLabels" type="checkbox" checked>格子線ラベル</label></div></div>
+<div class="row"><label>格子設定</label><div class="gridopts three"><select id="gridInterval"><option value="10">10分ごと</option><option value="20">20分ごと</option><option value="30">30分ごと</option><option value="custom">任意</option></select><input id="gridCustom" type="number" min="1" max="180" step="1" value="15" title="任意の分間隔"><input id="gridCount" type="number" min="1" max="12" step="1" value="6" title="片側の本数"></div></div>
+<div class="row"><label>方向</label><select id="gridDirection"><option value="after">指定時刻の後だけ（＋）</option><option value="both">指定時刻の前後（−／＋）</option><option value="before">指定時刻の前だけ（−）</option></select></div>
+<div class="row"><label>地図</label><select id="basemap"><option value="std">標準地図</option><option value="pale">淡色地図</option><option value="seamlessphoto">写真</option></select></div>
+<div class="buttons"><button id="nowBtn">現在時刻</button><button id="fitJapan">日本周辺</button><button id="fitWide">広域</button><button id="fitHokkaido">北海道周辺</button></div>
+<div id="status" class="status"></div>
+<div class="note">これは基準地点の日の出・日の入ではなく、指定時刻における地球全体の明暗境界です。Zoom Earthの「夜の境界」に近い考え方です。雲・地形・衛星画像の明暗は反映しません。線上の時刻表示は、この境界を描いている指定時刻です。</div>
+</div>
+<div class="zoomctl"><button id="zin">＋</button><button id="zout">−</button></div>
+<div class="legend"><div><span class="sw boundary"></span>白：夜の境界線</div><div><span class="sw rise"></span>水色：日の出側</div><div><span class="sw set"></span>橙色：日の入側</div><div>破線：時刻格子線</div></div>
+<div class="attr">出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a></div>
+<script>
+(()=>{
+const TILE_SIZE=256, tilesEl=document.getElementById('tiles'), canvas=document.getElementById('overlay'), ctx=canvas.getContext('2d'), mapEl=document.getElementById('map'), $=id=>document.getElementById(id);
+const tileUrls={std:'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',pale:'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',seamlessphoto:'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'};
+let view={centerLat:38.5,centerLon:139.0,zoom:5}, dragging=false,lastX=0,lastY=0,touchDist=null;
+function pad(n){return String(n).padStart(2,'0')}
+function rad(d){return d*Math.PI/180}
+function deg(r){return r*180/Math.PI}
+function norm180(x){return ((x+540)%360)-180}
+function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
+function setNow(){const n=new Date(); $('date').value=`${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`; $('time').value=`${pad(n.getHours())}:${pad(n.getMinutes())}`; renderAll()}
+setNow();
+function lonToX(lon,z){return(lon+180)/360*TILE_SIZE*Math.pow(2,z)}
+function latToY(lat,z){lat=clamp(lat,-85.0511,85.0511); const s=Math.sin(rad(lat)); return(0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*TILE_SIZE*Math.pow(2,z)}
+function xToLon(x,z){return x/(TILE_SIZE*Math.pow(2,z))*360-180}
+function yToLat(y,z){const n=Math.PI-2*Math.PI*y/(TILE_SIZE*Math.pow(2,z)); return deg(Math.atan(0.5*(Math.exp(n)-Math.exp(-n))))}
+function worldCenter(){return{x:lonToX(view.centerLon,view.zoom),y:latToY(view.centerLat,view.zoom)}}
+function llToScreen(lat,lon){const c=worldCenter(); return{x:lonToX(lon,view.zoom)-c.x+innerWidth/2,y:latToY(lat,view.zoom)-c.y+innerHeight/2}}
+function screenToLL(x,y){const c=worldCenter(); return{lon:xToLon(c.x+x-innerWidth/2,view.zoom),lat:yToLat(c.y+y-innerHeight/2,view.zoom)}}
+function tileUrl(z,x,y){return tileUrls[$('basemap').value].replace('{z}',z).replace('{x}',x).replace('{y}',y)}
+function renderTiles(){
+  const z=Math.round(view.zoom); view.zoom=z; const scale=Math.pow(2,z),maxTile=scale-1,c=worldCenter(),left=c.x-innerWidth/2,top=c.y-innerHeight/2;
+  const minX=Math.floor(left/TILE_SIZE)-1,maxX=Math.floor((left+innerWidth)/TILE_SIZE)+1,minY=Math.floor(top/TILE_SIZE)-1,maxY=Math.floor((top+innerHeight)/TILE_SIZE)+1;
+  const needed=new Set();
+  for(let ty=minY;ty<=maxY;ty++){
+    if(ty<0||ty>maxTile)continue;
+    for(let tx=minX;tx<=maxX;tx++){
+      const wx=((tx%scale)+scale)%scale,key=`${$('basemap').value}-${z}-${tx}-${ty}`;
+      needed.add(key);
+      let img=tilesEl.querySelector(`[data-key="${key}"]`);
+      if(!img){img=new Image();img.className='tile';img.draggable=false;img.dataset.key=key;img.src=tileUrl(z,wx,ty);img.onerror=()=>{img.style.display='none'};tilesEl.appendChild(img)}
+      img.style.left=`${Math.round(tx*TILE_SIZE-left)}px`;
+      img.style.top=`${Math.round(ty*TILE_SIZE-top)}px`;
+      img.style.display='block';
+    }
+  }
+  [...tilesEl.children].forEach(el=>{if(!needed.has(el.dataset.key))el.remove()})
+}
+function julianDate(d){return d.getTime()/86400000+2440587.5}
+function solarSubpoint(date){
+  const JD=julianDate(date), T=(JD-2451545.0)/36525;
+  let L0=(280.46646+36000.76983*T+0.0003032*T*T)%360; if(L0<0)L0+=360;
+  const M=357.52911+35999.05029*T-0.0001537*T*T;
+  const C=(1.914602-0.004817*T-0.000014*T*T)*Math.sin(rad(M))+(0.019993-0.000101*T)*Math.sin(rad(2*M))+0.000289*Math.sin(rad(3*M));
+  const trueLong=L0+C;
+  const omega=125.04-1934.136*T;
+  const lambda=trueLong-0.00569-0.00478*Math.sin(rad(omega));
+  const eps0=23+(26+(21.448-T*(46.815+T*(0.00059-T*0.001813)))/60)/60;
+  const eps=eps0+0.00256*Math.cos(rad(omega));
+  const alpha=deg(Math.atan2(Math.cos(rad(eps))*Math.sin(rad(lambda)),Math.cos(rad(lambda))));
+  const dec=deg(Math.asin(Math.sin(rad(eps))*Math.sin(rad(lambda))));
+  let theta=280.46061837+360.98564736629*(JD-2451545)+0.000387933*T*T-T*T*T/38710000; theta=((theta%360)+360)%360;
+  const lon=norm180(alpha-theta);
+  return{lat:dec,lon:lon,ra:alpha,gmst:theta};
+}
+function getDateTime(){const [y,m,d]=$('date').value.split('-').map(Number); const [hh,mm]=$('time').value.split(':').map(Number); return new Date(y,m-1,d,hh||0,mm||0,0)}
+function terminatorPoints(sp, altDeg){
+  const pts=[]; const c=rad(90-altDeg); const lat1=rad(sp.lat), lon1=rad(sp.lon);
+  for(let b=0;b<=360;b+=1){
+    const br=rad(b);
+    const lat=Math.asin(Math.sin(lat1)*Math.cos(c)+Math.cos(lat1)*Math.sin(c)*Math.cos(br));
+    const lon=lon1+Math.atan2(Math.sin(br)*Math.sin(c)*Math.cos(lat1),Math.cos(c)-Math.sin(lat1)*Math.sin(lat));
+    const latd=deg(lat), lond=norm180(deg(lon));
+    const H=rad(norm180(lond-sp.lon));
+    const rising=Math.sin(H)<0;
+    pts.push({lat:latd,lon:lond,rising});
+  }
+  return pts;
+}
+function splitSegments(pts){
+  const segs=[]; let cur=[];
+  for(let i=0;i<pts.length;i++){
+    if(i>0 && Math.abs(pts[i].lon-pts[i-1].lon)>180){if(cur.length>1)segs.push(cur); cur=[]}
+    cur.push(pts[i]);
+  }
+  if(cur.length>1)segs.push(cur);
+  return segs;
+}
+function drawPath(seg, color, width, dashed=false){
+  ctx.save();
+  ctx.beginPath();
+  if(dashed) ctx.setLineDash([7,7]);
+  seg.forEach((p,i)=>{const s=llToScreen(p.lat,p.lon); if(i===0)ctx.moveTo(s.x,s.y); else ctx.lineTo(s.x,s.y)});
+  ctx.strokeStyle=color; ctx.lineWidth=width; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+  ctx.restore();
+}
+function addMinutes(date, mins){return new Date(date.getTime()+mins*60000)}
+function gridOffsetLabel(mins){return mins<0?`−${Math.abs(mins)}分`:`+${mins}分`}
+function gridIntervalMinutes(){return $('gridInterval').value==='custom'?clamp(parseInt($('gridCustom').value||'15',10),1,180):parseInt($('gridInterval').value,10)}
+function gridOffsets(){
+  const interval=gridIntervalMinutes(), count=clamp(parseInt($('gridCount').value||'6',10),1,12), dir=$('gridDirection').value;
+  const out=[];
+  for(let i=1;i<=count;i++){
+    if(dir==='after'||dir==='both') out.push(i*interval);
+    if(dir==='before'||dir==='both') out.push(-i*interval);
+  }
+  return out.sort((a,b)=>a-b);
+}
+function drawSmallGridLabel(seg, text, color){
+  if(!$('showGridLabels').checked) return;
+  const visible=segmentVisiblePoints(seg);
+  if(visible.length<10) return;
+  const p=visible[Math.floor(visible.length*0.55)];
+  ctx.save();
+  ctx.font='600 11px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  const w=Math.ceil(ctx.measureText(text).width)+10,h=20,x=p.x-w/2,y=p.y-h/2,r=6;
+  if(x<2||y<2||x+w>innerWidth-2||y+h>innerHeight-2){ctx.restore();return;}
+  ctx.fillStyle='rgba(16,21,27,0.78)'; ctx.strokeStyle=color; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.fillText(text,x+w/2,y+h/2+0.5);
+  ctx.restore();
+}
+function drawTimeGrid(baseDate, alt){
+  if(!$('showTimeGrid').checked) return;
+  const split=$('split').checked;
+  for(const off of gridOffsets()){
+    // off は表示ラベルと同じ意味に固定する。
+    // 例：基準 05:00 の場合、off=-10 は 04:50、off=+10 は 05:10。
+    const dt=addMinutes(baseDate,off), sp=solarSubpoint(dt), pts=terminatorPoints(sp,alt), segs=splitSegments(pts);
+    const label=gridOffsetLabel(off);
+    for(const seg of segs){
+      if(split){
+        let part=[seg[0]], flag=seg[0].rising;
+        for(let i=1;i<seg.length;i++){
+          if(seg[i].rising!==flag){
+            if(part.length>1){const c=flag?'rgba(0,209,255,.38)':'rgba(255,176,0,.38)'; drawPath(part,c,2,true); drawSmallGridLabel(part,label,c)}
+            part=[seg[i-1],seg[i]]; flag=seg[i].rising;
+          }else part.push(seg[i]);
+        }
+        if(part.length>1){const c=flag?'rgba(0,209,255,.38)':'rgba(255,176,0,.38)'; drawPath(part,c,2,true); drawSmallGridLabel(part,label,c)}
+      }else{
+        drawPath(seg,'rgba(255,255,255,.34)',2,true); drawSmallGridLabel(seg,label,'rgba(255,255,255,.55)');
+      }
+    }
+  }
+}
+function solarElevation(lat,lon,sp){const H=rad(norm180(lon-sp.lon)); const s=Math.sin(rad(lat))*Math.sin(rad(sp.lat))+Math.cos(rad(lat))*Math.cos(rad(sp.lat))*Math.cos(H); return deg(Math.asin(clamp(s,-1,1)))}
+function drawNightShade(sp, altDeg){
+  if(!$('shade').checked)return;
+  const step=18;
+  for(let y=0;y<=innerHeight;y+=step){
+    for(let x=0;x<=innerWidth;x+=step){
+      const ll=screenToLL(x,y);
+      const elev=solarElevation(ll.lat,ll.lon,sp);
+      if(elev<altDeg){ctx.fillStyle='rgba(0,0,0,0.23)'; ctx.fillRect(x-step/2,y-step/2,step,step)}
+    }
+  }
+}
+function segmentVisiblePoints(seg){
+  const pts=[];
+  for(const p of seg){
+    const s=llToScreen(p.lat,p.lon);
+    if(s.x>-80 && s.x<innerWidth+80 && s.y>-60 && s.y<innerHeight+60) pts.push({x:s.x,y:s.y});
+  }
+  return pts;
+}
+function drawLabel(x,y,text,border){
+  ctx.save();
+  ctx.font='600 12px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif';
+  const padX=8,padY=5, h=26, w=Math.ceil(ctx.measureText(text).width)+padX*2, r=8;
+  const bx=Math.round(x-w/2), by=Math.round(y-h/2);
+  ctx.fillStyle='rgba(16,21,27,0.92)';
+  ctx.strokeStyle=border; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(bx+r,by); ctx.arcTo(bx+w,by,bx+w,by+h,r); ctx.arcTo(bx+w,by+h,bx,by+h,r); ctx.arcTo(bx,by+h,bx,by,r); ctx.arcTo(bx,by,bx+w,by,r); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,bx+w/2,by+h/2+0.5);
+  ctx.restore();
+  return {x:bx,y:by,w,h};
+}
+function overlap(a,b){return !(a.x+a.w<b.x || b.x+b.w<a.x || a.y+a.h<b.y || b.y+b.h<a.y)}
+function placeSegmentLabels(parts){
+  if(!$('showLabels').checked || !$('split').checked) return;
+  const timeText=$('time').value || '00:00';
+  const labels=[];
+  const used=[];
+  const maxPerColor={rise:3,set:3};
+  for(const item of parts){
+    const visible=segmentVisiblePoints(item.seg);
+    if(visible.length<8) continue;
+    const kind=item.rising?'rise':'set';
+    if(maxPerColor[kind]<=0) continue;
+    const mid=visible[Math.floor(visible.length/2)];
+    const text=item.rising?`日の出 ${timeText}`:`日の入 ${timeText}`;
+    const border=item.rising?'rgba(0,209,255,.98)':'rgba(255,176,0,.98)';
+    ctx.font='600 12px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif';
+    const width=Math.ceil(ctx.measureText(text).width)+16, height=26;
+    const rect={x:mid.x-width/2,y:mid.y-height/2,w:width,h:height};
+    const inBounds=rect.x>4 && rect.y>4 && rect.x+rect.w<innerWidth-4 && rect.y+rect.h<innerHeight-4;
+    if(!inBounds) continue;
+    if(used.some(u=>overlap(u,rect))) continue;
+    used.push(drawLabel(mid.x,mid.y,text,border));
+    maxPerColor[kind]--;
+  }
+}
+function renderOverlay(){
+  canvas.width=innerWidth; canvas.height=innerHeight; ctx.clearRect(0,0,canvas.width,canvas.height);
+  const dt=getDateTime(), sp=solarSubpoint(dt), alt=parseFloat($('altitude').value);
+  drawNightShade(sp,alt);
+  drawTimeGrid(dt,alt);
+  const pts=terminatorPoints(sp,alt), segs=splitSegments(pts), labeledParts=[];
+  if($('split').checked){
+    for(const seg of segs){
+      let part=[seg[0]], flag=seg[0].rising;
+      for(let i=1;i<seg.length;i++){
+        if(seg[i].rising!==flag){
+          if(part.length>1){drawPath(part,flag?'rgba(0,209,255,.95)':'rgba(255,176,0,.95)',4); labeledParts.push({seg:[...part],rising:flag});}
+          part=[seg[i-1],seg[i]]; flag=seg[i].rising;
+        }else{
+          part.push(seg[i]);
+        }
+      }
+      if(part.length>1){drawPath(part,flag?'rgba(0,209,255,.95)':'rgba(255,176,0,.95)',4); labeledParts.push({seg:[...part],rising:flag});}
+    }
+    placeSegmentLabels(labeledParts);
+  } else {
+    segs.forEach(seg=>drawPath(seg,'rgba(255,255,255,.96)',4));
+  }
+  $('status').textContent=`太陽直下点：緯度 ${sp.lat.toFixed(2)}°、経度 ${sp.lon.toFixed(2)}° / 表示時刻 ${$('date').value} ${$('time').value} JST / 格子：−は指定時刻前、＋は指定時刻後`;
+}
+function renderAll(){renderTiles(); renderOverlay()}
+function moveCenterBy(dx,dy){const c=worldCenter(); view.centerLon=xToLon(c.x-dx,view.zoom); view.centerLat=yToLat(c.y-dy,view.zoom); renderAll()}
+mapEl.addEventListener('mousedown',e=>{dragging=true; lastX=e.clientX; lastY=e.clientY; mapEl.classList.add('dragging')});
+window.addEventListener('mousemove',e=>{if(!dragging)return; moveCenterBy(e.clientX-lastX,e.clientY-lastY); lastX=e.clientX; lastY=e.clientY});
+window.addEventListener('mouseup',()=>{dragging=false; mapEl.classList.remove('dragging')});
+mapEl.addEventListener('wheel',e=>{e.preventDefault(); const old=screenToLL(e.clientX,e.clientY); view.zoom=clamp(view.zoom+(e.deltaY<0?1:-1),2,10); renderTiles(); const nw=screenToLL(e.clientX,e.clientY); view.centerLon+=old.lon-nw.lon; view.centerLat+=old.lat-nw.lat; renderAll()},{passive:false});
+mapEl.addEventListener('touchstart',e=>{if(e.touches.length===1){dragging=true; lastX=e.touches[0].clientX; lastY=e.touches[0].clientY}else if(e.touches.length===2){touchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)}},{passive:false});
+mapEl.addEventListener('touchmove',e=>{e.preventDefault(); if(e.touches.length===1&&dragging){moveCenterBy(e.touches[0].clientX-lastX,e.touches[0].clientY-lastY); lastX=e.touches[0].clientX; lastY=e.touches[0].clientY}else if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY); if(touchDist && Math.abs(d-touchDist)>45){view.zoom=clamp(view.zoom+(d>touchDist?1:-1),2,10); touchDist=d; renderAll()}}},{passive:false});
+window.addEventListener('touchend',()=>{dragging=false; touchDist=null});
+window.addEventListener('resize',renderAll);
+$('zin').onclick=()=>{view.zoom=clamp(view.zoom+1,2,10); renderAll()};
+$('zout').onclick=()=>{view.zoom=clamp(view.zoom-1,2,10); renderAll()};
+$('nowBtn').onclick=setNow;
+$('fitJapan').onclick=()=>{view={centerLat:38.5,centerLon:139.0,zoom:5}; renderAll()};
+$('fitWide').onclick=()=>{view={centerLat:37,centerLon:125,zoom:4}; renderAll()};
+$('fitHokkaido').onclick=()=>{view={centerLat:43.5,centerLon:144.0,zoom:6}; renderAll()};
+['date','time','altitude','split','shade','showLabels','basemap','showTimeGrid','showGridLabels','gridInterval','gridCustom','gridCount','gridDirection'].forEach(id=>$(id).addEventListener('change',renderAll));
+renderAll();
+})();
+</script>
+</body>
+</html>
