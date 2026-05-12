@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>震央近傍任意地点 潮汐表示（任意中心座標対応版）</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2937;--muted:#667085;--line:#d0d5dd;--accent:#2563eb;--bad:#b42318;--ok:#027a48;--warn:#b54708;}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;line-height:1.55;}
+header{padding:18px 16px;background:#111827;color:white} h1{font-size:19px;margin:0 0 4px} h2{font-size:17px;margin:0 0 10px}
+.header-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}.header-link-btn{display:inline-block;width:auto;text-decoration:none;background:#2563eb;color:white;border:1px solid #60a5fa;border-radius:9px;padding:9px 12px;font-weight:700}.header-link-btn:hover{filter:brightness(1.08)}
+main{max-width:1120px;margin:0 auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:170px}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}input,select,button,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px;background:white;box-sizing:border-box;width:100%}
+button{background:var(--accent);color:white;border-color:var(--accent);font-weight:700;cursor:pointer}button.secondary{background:white;color:var(--ink);border-color:var(--line)}button:disabled{opacity:.55;cursor:not-allowed}
+table{width:100%;border-collapse:collapse;font-size:14px;background:white}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f2f4f7;white-space:nowrap}.small{font-size:12px;color:var(--muted)}.warn{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.caution{color:var(--warn);font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.log{white-space:pre-wrap;background:#0b1020;color:#d1d5db;border-radius:10px;padding:10px;font-size:12px;max-height:260px;overflow:auto}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef4ff;color:#1d4ed8;font-size:12px;margin:2px 4px 2px 0}.nowrap{white-space:nowrap}
+</style>
+</head>
+<body>
+<header>
+<h1>震央近傍地点の当日潮汐表示（任意中心座標対応版）</h1>
+<div class="small" style="color:#d1d5db">気象庁 地震JSON + 気象庁 潮位表 + tide736 APIをブラウザから取得します。潮位は天文潮位の予測値です。</div>
+<div class="header-actions">
+<a class="header-link-btn" href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">気象庁の地震情報ページを開く</a>
+</div>
+</header>
+<main>
+<section class="card">
+<h2>0. 潮位表地点リスト</h2>
+<div class="grid">
+<div><label>潮位表掲載地点一覧表URL</label><input id="stationUrl" value="https://www.data.jma.go.jp/kaiyou/db/tide/suisan/station.php"></div>
+<div><label>地点リスト状態</label><input id="stationStatus" readonly value="未取得"></div>
+<div><label>CORS回避プロキシ（直接取得失敗時のみ使用）</label><input id="proxyUrl" value="https://api.allorigins.win/raw?url=" placeholder="空欄なら使わない"></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="btnLoadStations">全国地点リストを取得</button><button id="btnClearLog" class="secondary">ログ消去</button></div>
+<div class="small" style="margin-top:8px">全国地点リスト取得に失敗した場合は、予備リストで動きます。その場合は全国完全版ではありません。</div>
+</section>
+<section class="card">
+<h2>1. 地震を取得</h2>
+<div class="grid">
+<div><label>地震情報リストURL</label><input id="quakeListUrl" value="https://www.jma.go.jp/bosai/quake/data/list.json"></div>
+<div><label>取得件数</label><input id="listLimit" type="number" min="1" max="50" value="20"></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="btnLoadQuakes">地震リストを取得</button><button id="btnUseManualCenter" class="secondary">手動で任意の中心座標を使う</button></div>
+<div class="grid" style="margin-top:10px">
+<div><label>手動中心 緯度</label><input id="manualLat" type="number" step="0.001" value="35.192"></div>
+<div><label>手動中心 経度</label><input id="manualLon" type="number" step="0.001" value="138.406"></div>
+</div>
+<div class="small" style="margin-top:6px">例：35.192, 138.406。ここに任意の中心座標を入れて、上のボタンを押すと2番の緯度・経度へ反映します。</div>
+<div style="margin-top:10px"><label>取得した地震</label><select id="quakeSelect"><option>未取得</option></select></div>
+<div id="quakeInfo" class="small" style="margin-top:8px"></div>
+</section>
+<section class="card">
+<h2>2. 震央座標・日付・地点数</h2>
+<div class="grid">
+<div><label>緯度</label><input id="lat" type="number" step="0.001" value="35.192"></div>
+<div><label>経度</label><input id="lon" type="number" step="0.001" value="138.406"></div>
+<div><label>対象日（JST）</label><input id="date" type="date"></div>
+<div><label>表示する近傍地点数</label><input id="stationCount" type="number" min="1" max="50" value="4"></div>
+<div><label>tide736 API URL</label><input id="tide736Api" value="https://api.tide736.net/get_tide.php"></div>
+<div><label>潮回り取得用 tide736地点</label><input id="tide736Ref" value="pc=13&hc=1（東京・築地想定）" readonly></div>
+<div style="grid-column:1/-1"><label>tide736用CORS回避プロキシ候補（上から順に再試行）</label><textarea id="tide736Proxies" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">https://api.allorigins.win/raw?url=
+https://corsproxy.io/?
+https://api.codetabs.com/v1/proxy?quest=</textarea></div>
+</div>
+<div class="row" style="margin-top:10px"><button id="btnNearest">指定地点数を選んで潮汐取得</button><button id="btnNearestOnly" class="secondary">指定地点数だけ表示</button></div>
+</section>
+<section class="card">
+<h2>3. 結果</h2>
+<div id="summary" class="small"></div>
+<div style="overflow:auto;margin-top:8px"><table id="resultTable"><thead><tr><th>順</th><th>地点</th><th>満潮</th><th>干潮</th><th>潮回り</th><th>距離</th><th>緯度経度</th><th>元ページ</th><th>状態</th></tr></thead><tbody></tbody></table></div>
+</section>
+<section class="card"><h2>ログ</h2><div id="log" class="log"></div></section>
+<section class="card small">
+<h2>注意</h2>
+<p>単体HTMLの試作版です。ブラウザの制限で気象庁ページを直接読み取れない場合は、プロキシ経由で再試行します。</p>
+<p>潮位表は実測潮位ではなく、天文潮位の予測値です。地震後の津波・副振動・気象要因による水位変化の判断には使えません。</p>
+<p>潮回り（大潮・中潮・小潮・長潮・若潮）は tide736 API の moon.title を表示します。直接取得に失敗した場合は、tide736用プロキシ候補を上から順に試します。</p>
+<p>tide736は気象庁・海上保安庁の公式サービスではありません。API停止・仕様変更・アクセス制限の可能性があります。</p>
+</section>
+</main>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const log = msg => { const t = new Date().toLocaleTimeString('ja-JP'); $('log').textContent += `[${t}] ${msg}\n`; $('log').scrollTop = $('log').scrollHeight; };
+function setToday(){ const d = new Date(); $('date').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+setToday();
+let STATIONS = [
+{code:'WN',name:'稚内',lat:45+24/60,lon:141+41/60},{code:'KR',name:'釧路',lat:42+59/60,lon:144+22/60},{code:'HK',name:'函館',lat:41+47/60,lon:140+43/60},
+{code:'AO',name:'青森',lat:40+50/60,lon:140+46/60},{code:'MY',name:'宮古',lat:39+39/60,lon:141+59/60},{code:'OF',name:'大船渡',lat:39+1/60,lon:141+45/60},{code:'ON',name:'小名浜',lat:36+56/60,lon:140+54/60},
+{code:'CS',name:'銚子漁港',lat:35+45/60,lon:140+52/60},{code:'TK',name:'東京',lat:35+39/60,lon:139+46/60},{code:'QS',name:'横浜',lat:35+27/60,lon:139+39/60},{code:'OD',name:'小田原',lat:35+14/60,lon:139+9/60},
+{code:'UC',name:'内浦',lat:35+1/60,lon:138+53/60},{code:'SM',name:'清水港',lat:35+1/60,lon:138+31/60},{code:'Z5',name:'焼津',lat:34+52/60,lon:138+20/60},{code:'OM',name:'御前崎',lat:34+37/60,lon:138+13/60},
+{code:'NG',name:'名古屋',lat:35+5/60,lon:136+53/60},{code:'OS',name:'大阪',lat:34+39/60,lon:135+26/60},{code:'KB',name:'神戸',lat:34+41/60,lon:135+11/60},{code:'HI',name:'広島',lat:34+21/60,lon:132+28/60},
+{code:'TJ',name:'高松',lat:34+21/60,lon:134+3/60},{code:'MT',name:'松山',lat:33+51/60,lon:132+43/60},{code:'HA',name:'博多',lat:33+36/60,lon:130+24/60},{code:'NGS',name:'長崎',lat:32+44/60,lon:129+52/60},
+{code:'KG',name:'鹿児島',lat:31+36/60,lon:130+34/60},{code:'NH',name:'那覇',lat:26+13/60,lon:127+40/60},{code:'IS',name:'石垣',lat:24+20/60,lon:124+9/60}
+];
+let stationsReady = false;
+let quakeItems = [];
+function proxyUrl(url){ const p = $('proxyUrl').value.trim(); return p ? p + encodeURIComponent(url) : url; }
+async function fetchText(url){
+  try{
+    const r = await fetch(url, {cache:'no-store'});
+    if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return await r.text();
+  }catch(e){
+    const p = $('proxyUrl').value.trim();
+    if(p && !url.startsWith(p)){
+      log(`直接取得失敗。プロキシで再試行: ${e.message}`);
+      const r = await fetch(proxyUrl(url), {cache:'no-store'});
+      if(!r.ok) throw new Error(`proxy ${r.status} ${r.statusText}`);
+      return await r.text();
+    }
+    throw e;
+  }
+}
+async function fetchJson(url){ return JSON.parse(await fetchText(url)); }
+function parseDMS(deg,min){ return Number(deg)+Number(min)/60; }
+function cleanName(s){
+  return String(s ?? '')
+    .replace(/【[^†】]*†([^】]+)】/g,'$1')   // web抽出時の「【11†稚内】」対策
+    .replace(/[【】]/g,'')
+    .replace(/^[\s\d†]+/g,'')
+    .replace(/\s+/g,'')
+    .trim();
+}
+function parseStationLine(tx){
+  const line = String(tx ?? '').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  // 例1: 1 WN 稚内 45゜24' 141゜41'
+  // 例2: 1 WN【11†稚内】 45゜24' 141゜41'
+  const m = line.match(/^\s*(\d{1,3})\s+([A-Z0-9]{2})\s*(?:【[^†】]*†([^】]+)】|(.+?))\s+(\d{2})[゜°]\s*(\d{2})['′’]\s+(\d{3})[゜°]\s*(\d{2})['′’]/);
+  if(!m) return null;
+  const code = m[2];
+  const rawName = m[3] || m[4] || '';
+  const name = cleanName(rawName);
+  if(!code || !name) return null;
+  return {code, name, lat:parseDMS(m[5],m[6]), lon:parseDMS(m[7],m[8])};
+}
+function parseStationsFromHtml(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const stations = [];
+
+  // まずHTMLの表行から読む。通常ブラウザではこちらが本命。
+  for(const tr of Array.from(doc.querySelectorAll('tr'))){
+    const tx = tr.textContent || '';
+    const s = parseStationLine(tx);
+    if(s) stations.push(s);
+  }
+
+  // 表行で取れない環境向け。ページ全文から行単位で再解析。
+  if(stations.length < 150){
+    const text = (doc.body ? doc.body.textContent : html)
+      .replace(/\u00a0/g,' ')
+      .replace(/\r/g,'\n');
+    for(const line of text.split('\n').map(x=>x.trim()).filter(Boolean)){
+      const s = parseStationLine(line);
+      if(s) stations.push(s);
+    }
+  }
+
+  // 最後の保険。改行が消えているプロキシ応答向けに、全文へ正規表現をかける。
+  if(stations.length < 150){
+    const text = (doc.body ? doc.body.textContent : html).replace(/\u00a0/g,' ').replace(/\s+/g,' ');
+    const re = /(?:^|\s)(\d{1,3})\s+([A-Z0-9]{2})\s*(?:【[^†】]*†([^】]+)】|(.{1,28}?))\s+(\d{2})[゜°]\s*(\d{2})['′’]\s+(\d{3})[゜°]\s*(\d{2})['′’]/g;
+    let m;
+    while((m = re.exec(text)) !== null){
+      const code = m[2];
+      const name = cleanName(m[3] || m[4] || '');
+      if(code && name) stations.push({code,name,lat:parseDMS(m[5],m[6]),lon:parseDMS(m[7],m[8])});
+    }
+  }
+
+  const seen = new Set();
+  return stations.filter(s=>{
+    const k=s.code+'|'+s.name;
+    if(seen.has(k))return false;
+    seen.add(k);
+    return Number.isFinite(s.lat) && Number.isFinite(s.lon);
+  });
+}
+async function loadStations(){
+  $('btnLoadStations').disabled = true; $('stationStatus').value = '取得中...';
+  try{
+    const html = await fetchText($('stationUrl').value.trim());
+    const stations = parseStationsFromHtml(html);
+    if(stations.length < 150) throw new Error(`地点解析数が少なすぎます: ${stations.length}件。ページ取得は成功したが、一覧表の読み取りに失敗しています。`);
+    STATIONS = stations; stationsReady = true;
+    log('地点リスト先頭確認: '+STATIONS.slice(0,5).map(s=>s.code+':'+s.name).join(', '));
+    $('stationStatus').value = `全国 ${STATIONS.length}地点を取得済み`;
+    log(`潮位表掲載地点一覧を取得: ${STATIONS.length}地点`);
+  }catch(e){
+    stationsReady = false;
+    $('stationStatus').value = `取得失敗。予備 ${STATIONS.length}地点で動作`;
+    log('全国地点リスト取得失敗: '+e.message);
+  }finally{$('btnLoadStations').disabled = false;}
+}
+async function ensureStations(){ if(!stationsReady) await loadStations(); }
+function haversineKm(a,b,c,d){ const R=6371, rad=x=>x*Math.PI/180; const dLat=rad(c-a), dLon=rad(d-b); const h=Math.sin(dLat/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+function getStationCount(){
+  const n = Number($('stationCount').value);
+  if(!Number.isFinite(n)) return 4;
+  return Math.max(1, Math.min(50, Math.round(n)));
+}
+function nearestStations(){
+  const lat=Number($('lat').value), lon=Number($('lon').value), count=getStationCount();
+  return STATIONS.map(s=>({...s,dist:haversineKm(lat,lon,s.lat,s.lon)})).sort((a,b)=>a.dist-b.dist).slice(0,count);
+}
+function tideUrl(code){ const [y,m,d] = $('date').value.split('-').map(Number); return `https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=${encodeURIComponent(code)}&ys=${y}&ms=${m}&ds=${d}&ye=${y}&me=${m}&de=${d}&LV=DL&S_HILO=on`; }
+function rowHtml(s, idx, hilo={}, status='未取得'){
+  const url = tideUrl(s.code);
+  return `<tr><td>${idx}</td><td><b>${esc(s.name)}</b></td><td>${hilo.high||''}</td><td>${hilo.low||''}</td><td class="nowrap">${hilo.cycle||''}</td><td class="nowrap">${s.dist.toFixed(1)} km</td><td class="mono small">${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}</td><td><a href="${url}" target="_blank" rel="noopener">開く</a></td><td class="small">${status}</td></tr>`;
+}
+function tide736Url(dateStr){
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  const base = $('tide736Api').value.trim() || 'https://api.tide736.net/get_tide.php';
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}pc=13&hc=1&yr=${y}&mn=${m}&dy=${d}&rg=day`;
+}
+function normalizeTide736JsonText(text){
+  const t = String(text || '').trim();
+  const first = t.indexOf('{');
+  const last = t.lastIndexOf('}');
+  if(first >= 0 && last > first) return t.slice(first, last + 1);
+  return t;
+}
+function tide736ProxyList(){
+  return String($('tide736Proxies')?.value || '')
+    .split(/\n+/)
+    .map(x=>x.trim())
+    .filter(Boolean);
+}
+function buildProxyRequest(proxy, target){
+  // 入力欄の末尾が = または ? なら単純連結、それ以外は target をURL部品として付ける。
+  if(proxy.endsWith('=') || proxy.endsWith('?')) return proxy + encodeURIComponent(target);
+  return proxy + encodeURIComponent(target);
+}
+async function fetchTextNoRetry(url){
+  const r = await fetch(url, {cache:'no-store'});
+  if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return await r.text();
+}
+async function fetchTide736Text(url){
+  try{
+    log('tide736 直接取得を試行');
+    return await fetchTextNoRetry(url);
+  }catch(e){
+    log('tide736 直接取得失敗: '+e.message);
+  }
+  const errors = [];
+  for(const proxy of tide736ProxyList()){
+    const req = buildProxyRequest(proxy, url);
+    try{
+      log('tide736 プロキシ試行: '+proxy);
+      return await fetchTextNoRetry(req);
+    }catch(e){
+      errors.push(`${proxy} -> ${e.message}`);
+      log('tide736 プロキシ失敗: '+proxy+' / '+e.message);
+    }
+  }
+  throw new Error(errors.length ? errors.join(' / ') : '利用可能なtide736プロキシ候補なし');
+}
+async function fetchTideCycleFromTide736(dateStr){
+  const url = tide736Url(dateStr);
+  try{
+    log(`潮回り取得 tide736: ${url}`);
+    const text = await fetchTide736Text(url);
+    const data = JSON.parse(normalizeTide736JsonText(text));
+    if(String(data.status) !== '1' && data.status !== 1) throw new Error(data.message || 'status != 1');
+    const chart = data?.tide?.chart || {};
+    const item = chart[dateStr] || Object.values(chart)[0];
+    const moon = item?.moon || {};
+    const title = moon.title || '';
+    if(!title) throw new Error('moon.titleなし');
+    log(`潮回り取得成功 tide736: ${title}${moon.age !== undefined ? ' 月齢 '+moon.age : ''}`);
+    return `<b>${esc(title)}</b>`;
+  }catch(e){
+    log(`潮回り取得失敗 tide736: ${e.message}`);
+    return `<span class="warn">tide736取得失敗</span>`;
+  }
+}
+function splitPairs(tokens){
+  const pairs=[];
+  for(let i=0;i<tokens.length-1;i+=2){
+    if((/^\d{1,2}:\d{2}$/.test(tokens[i]) || tokens[i]==='*') && (/^-?\d+$/.test(tokens[i+1]) || tokens[i+1]==='*')) pairs.push({time:tokens[i], level:tokens[i+1]});
+  }
+  return pairs;
+}
+function fmtPairs(pairs, dateStr){
+  const day = String(Number(String(dateStr).split('-')[2] || ''));
+  return pairs
+    .filter(p=>p.time !== '*' && p.level !== '*')
+    .map(p=>`${day}/${p.time} ${p.level}cm`)
+    .join('<br>') || '<span class="caution">該当なし</span>';
+}
+function extractHiloFromHtml(html, dateStr){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const [y,m,d]=dateStr.split('-').map(Number);
+  const datePat = `${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+  let bestText = '';
+  for(const tr of Array.from(doc.querySelectorAll('tr'))){
+    const tx = tr.textContent.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+    if(tx.includes(datePat)){ bestText = tx; break; }
+  }
+  if(!bestText){
+    const text = (doc.body ? doc.body.textContent : html).replace(/\u00a0/g,' ').replace(/[ \t\r\f]+/g,' ').replace(/\n+/g,'\n');
+    const line = text.split('\n').find(x=>x.includes(datePat));
+    if(line) bestText = line.trim();
+    else { const idx=text.indexOf(datePat); if(idx>=0) bestText=text.slice(idx, idx+360).trim(); }
+  }
+  if(!bestText) return {high:'',low:'', status:'<span class="warn">解析不可: 日付行なし</span>'};
+  let row = bestText.replace(/^.*?\d{4}\/\d{2}\/\d{2}\([^)]*\)\s*/, ' ')
+                    .replace(/Image:\s*(朔|新月|上弦の月|望|満月|下弦の月)/g,' ')
+                    .replace(/(朔|新月|上弦の月|望|満月|下弦の月)/g,' ')
+                    .replace(/\s+/g,' ').trim();
+  const tokens = row.split(' ').filter(x => /^\d{1,2}:\d{2}$/.test(x) || /^-?\d+$/.test(x) || x==='*');
+  const pairs = splitPairs(tokens);
+  if(pairs.length < 8) return {high:'',low:'', status:`<span class="warn">解析不可: 値不足</span><br><span class="mono">${esc(bestText.slice(0,160))}</span>`};
+  return {high:fmtPairs(pairs.slice(0,4), dateStr), low:fmtPairs(pairs.slice(4,8), dateStr), status:'<span class="ok">取得</span>'};
+}
+async function showNearestOnly(){ await ensureStations(); const ns=nearestStations(); const count=getStationCount(); $('summary').innerHTML = `震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 地点リスト: ${stationsReady ? '全国版' : '予備版'}`; $('resultTable').querySelector('tbody').innerHTML = ns.map((s,i)=>rowHtml(s,i+1)).join(''); }
+async function fetchTides(){
+  await ensureStations();
+  const ns=nearestStations();
+  const count=getStationCount();
+  const dateStr = $('date').value;
+  const cycleLabel = await fetchTideCycleFromTide736(dateStr);
+  $('summary').innerHTML = `震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点の ${esc(dateStr)} の満潮・干潮 / 地点リスト: ${stationsReady ? '全国版' : '予備版'}`;
+  const tbody=$('resultTable').querySelector('tbody'); tbody.innerHTML = ns.map((s,i)=>rowHtml(s,i+1,{cycle:cycleLabel},'取得待ち')).join('');
+  for(let i=0;i<ns.length;i++){
+    const s=ns[i];
+    try{
+      log(`潮汐取得: ${s.name} ${s.code}`);
+      const html=await fetchText(tideUrl(s.code));
+      const hilo=extractHiloFromHtml(html, dateStr);
+      hilo.cycle = cycleLabel;
+      tbody.rows[i].outerHTML = rowHtml(s,i+1,hilo,hilo.status);
+    }catch(e){
+      tbody.rows[i].outerHTML = rowHtml(s,i+1,{cycle:cycleLabel},`<span class="warn">取得失敗</span><br>${esc(e.message)}`);
+      log(`潮汐取得失敗: ${s.name} ${s.code}: ${e.message}`);
+    }
+  }
+}
+function toHalfWidth(str){
+  return String(str ?? '')
+    .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+    .replace(/［/g,'[').replace(/］/g,']')
+    .replace(/[．。]/g,'.')
+    .replace(/[＋﹢]/g,'+')
+    .replace(/[－−ー―]/g,'-')
+    .replace(/[／]/g,'/')
+    .replace(/東経/g,'E').replace(/北緯/g,'N');
+}
+function parseCoord(s){
+  if(!s) return null;
+  const t = toHalfWidth(s).replace(/\s+/g,'');
+  // 気象庁JSONで多い形式: +35.2+138.4-01000/  または +35.192+138.406/
+  let m = t.match(/([+-]\d{1,3}(?:\.\d+)?)([+-]\d{1,3}(?:\.\d+)?)/);
+  if(m){
+    const lat=parseFloat(m[1]), lon=parseFloat(m[2]);
+    if(Number.isFinite(lat) && Number.isFinite(lon)) return {lat,lon,source:String(s)};
+  }
+  // 表示文形式: 北緯35.2度 東経138.4度
+  m = t.match(/N(\d{1,3}(?:\.\d+)?)度?E(\d{1,3}(?:\.\d+)?)度?/);
+  if(m){
+    const lat=parseFloat(m[1]), lon=parseFloat(m[2]);
+    if(Number.isFinite(lat) && Number.isFinite(lon)) return {lat,lon,source:String(s)};
+  }
+  // ラベルなしの保険。ただし経緯度らしい2数だけに限定。
+  m = t.match(/(?:lat|緯度)[=:]?([+-]?\d{1,3}(?:\.\d+)?).{0,20}(?:lon|lng|経度)[=:]?([+-]?\d{1,3}(?:\.\d+)?)/i);
+  if(m){
+    const lat=parseFloat(m[1]), lon=parseFloat(m[2]);
+    if(Number.isFinite(lat) && Number.isFinite(lon)) return {lat,lon,source:String(s)};
+  }
+  return null;
+}
+function getByPath(obj, path){
+  return path.split('.').reduce((o,k)=> (o && Object.prototype.hasOwnProperty.call(o,k)) ? o[k] : undefined, obj);
+}
+function deepFindValue(obj, keyRegex, maxDepth=8){
+  const seen = new Set();
+  function walk(o, depth){
+    if(o == null || depth > maxDepth) return undefined;
+    if(typeof o !== 'object') return undefined;
+    if(seen.has(o)) return undefined;
+    seen.add(o);
+    for(const [k,v] of Object.entries(o)){
+      if(keyRegex.test(k) && (typeof v === 'string' || typeof v === 'number')) return v;
+    }
+    for(const v of Object.values(o)){
+      const r = walk(v, depth+1);
+      if(r !== undefined) return r;
+    }
+    return undefined;
+  }
+  return walk(obj,0);
+}
+function findCoordinateInObj(obj){
+  const candidates = [
+    getByPath(obj,'Body.Earthquake.Hypocenter.Area.Coordinate'),
+    getByPath(obj,'Body.Earthquake.Hypocenter.Coordinate'),
+    getByPath(obj,'Body.Earthquake.Hypocenter.Area.coordinate'),
+    getByPath(obj,'Body.Earthquake.Hypocenter.coordinate'),
+    getByPath(obj,'earthquake.hypocenter.coordinate'),
+    getByPath(obj,'earthquake.hypocenter.Coordinate'),
+    getByPath(obj,'hypocenter.coordinate'),
+    getByPath(obj,'hypocenter.Coordinate'),
+    getByPath(obj,'coordinate'),
+    getByPath(obj,'Coordinate'),
+    deepFindValue(obj,/^Coordinate$/i)
+  ].filter(v => v !== undefined && v !== null);
+  for(const v of candidates){
+    const c = parseCoord(v);
+    if(c) return c;
+  }
+  // lat/lon形式のJSONが来た場合の保険
+  const lat = deepFindValue(obj,/^(lat|latitude|緯度)$/i);
+  const lon = deepFindValue(obj,/^(lon|lng|longitude|経度)$/i);
+  if(lat !== undefined && lon !== undefined){
+    const a = parseFloat(toHalfWidth(lat)), b = parseFloat(toHalfWidth(lon));
+    if(Number.isFinite(a) && Number.isFinite(b)) return {lat:a, lon:b, source:`lat/lon keys: ${lat}, ${lon}`};
+  }
+  return null;
+}
+function findFirstString(obj, paths, keyRegex){
+  for(const p of paths){
+    const v=getByPath(obj,p);
+    if(v !== undefined && v !== null && String(v).trim()) return String(v);
+  }
+  const v=deepFindValue(obj,keyRegex);
+  return v !== undefined && v !== null ? String(v) : '';
+}
+function findQuakeName(obj){
+  return findFirstString(obj, [
+    'Body.Earthquake.Hypocenter.Area.Name',
+    'Body.Earthquake.Hypocenter.Name',
+    'earthquake.hypocenter.name',
+    'hypocenter.name',
+    'title','Title','Head.Title'
+  ], /^(Name|name|Title|title)$/i) || '不明';
+}
+function findQuakeTime(obj){
+  return findFirstString(obj, [
+    'Body.Earthquake.OriginTime',
+    'Body.Earthquake.ArrivalTime',
+    'Head.TargetDateTime',
+    'Head.ReportDateTime',
+    'earthquake.originTime',
+    'earthquake.time',
+    'reportDatetime','ReportDateTime','at','dateTime','time'
+  ], /^(OriginTime|ArrivalTime|ReportDateTime|TargetDateTime|originTime|dateTime|time|at)$/i);
+}
+function jstDateFromAny(s){
+  const raw = String(s || '').trim();
+  if(!raw){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  const half = toHalfWidth(raw);
+  const m = half.match(/(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})/);
+  if(m) return `${m[1]}-${String(Number(m[2])).padStart(2,'0')}-${String(Number(m[3])).padStart(2,'0')}`;
+  const d = new Date(half);
+  if(!Number.isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+}
+function setQuakeInfo(obj, label=''){
+  const c = findCoordinateInObj(obj);
+  const name = findQuakeName(obj);
+  const dt = findQuakeTime(obj);
+  if(c){
+    $('lat').value = c.lat.toFixed(3);
+    $('lon').value = c.lon.toFixed(3);
+    log(`震央座標を取得: ${c.lat.toFixed(3)}, ${c.lon.toFixed(3)} / ${c.source}`);
+  }else{
+    log('震央座標を取得できません。現在の緯度経度欄は変更していません。');
+  }
+  if(dt) $('date').value = jstDateFromAny(dt);
+  $('quakeInfo').innerHTML =
+    `<span class="pill">震源: ${esc(name)}</span>`+
+    `<span class="pill">時刻: ${esc(dt || '不明')}</span>`+
+    `<span class="pill ${c ? '' : 'warn'}">座標: ${c ? `${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}` : '取得できません'}</span>`+
+    (label ? `<span class="pill">${esc(label)}</span>` : '');
+  return !!c;
+}
+async function loadSelectedQuake(){
+  const i=Number($('quakeSelect').value), q=quakeItems[i];
+  if(!q) return;
+  $('quakeInfo').innerHTML='<span class="pill">個別地震JSON確認中...</span>';
+  if(q.json){
+    const url=new URL(q.json,'https://www.jma.go.jp/bosai/quake/data/').href;
+    try{
+      const detail=await fetchJson(url);
+      const ok = setQuakeInfo(detail, '個別JSONから取得');
+      log('個別地震JSON取得: '+url);
+      if(!ok) setQuakeInfo(q, 'リスト情報を確認');
+    }catch(e){
+      log('個別地震JSON取得失敗。リスト情報だけ使います: '+e.message);
+      setQuakeInfo(q, 'リスト情報のみ');
+    }
+  } else {
+    setQuakeInfo(q, 'リスト情報のみ');
+  }
+}
+async function loadQuakes(){
+  $('btnLoadQuakes').disabled=true;
+  $('quakeSelect').innerHTML='<option>取得中...</option>';
+  log('地震リスト取得開始');
+  try{
+    const list=await fetchJson($('quakeListUrl').value.trim());
+    quakeItems=list.slice(0,Number($('listLimit').value)||20);
+    $('quakeSelect').innerHTML=quakeItems.map((q,i)=>`<option value="${i}">${esc(q.title||q.name||q.reportDatetime||q.json||('地震 '+(i+1)))}</option>`).join('');
+    log(`地震リスト ${quakeItems.length}件を取得`);
+    await loadSelectedQuake();
+    await showNearestOnly();
+  }catch(e){
+    log('地震リスト取得失敗: '+e.message);
+    $('quakeSelect').innerHTML='<option>取得失敗</option>';
+  }finally{$('btnLoadQuakes').disabled=false;}
+}
+$('btnLoadStations').addEventListener('click', async()=>{ await loadStations(); await showNearestOnly(); });
+$('btnClearLog').addEventListener('click', ()=>$('log').textContent='');
+$('btnLoadQuakes').addEventListener('click', loadQuakes);
+$('quakeSelect').addEventListener('change', loadSelectedQuake);
+$('btnUseManualCenter').addEventListener('click', ()=>{
+  const lat = Number($('manualLat').value);
+  const lon = Number($('manualLon').value);
+  if(!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180){
+    $('quakeInfo').innerHTML='<span class="pill warn">任意中心座標が不正です</span>';
+    log('任意中心座標が不正です。緯度は -90〜90、経度は -180〜180 で入力してください。');
+    return;
+  }
+  $('lat').value = lat.toFixed(3);
+  $('lon').value = lon.toFixed(3);
+  $('quakeInfo').innerHTML=`<span class="pill">任意の中心座標を使用</span><span class="pill">座標: ${lat.toFixed(3)}, ${lon.toFixed(3)}</span>`;
+  log(`任意の中心座標を使用: ${lat.toFixed(3)}, ${lon.toFixed(3)}`);
+  showNearestOnly();
+});
+$('btnNearestOnly').addEventListener('click', showNearestOnly);
+$('btnNearest').addEventListener('click', fetchTides);
+$('stationCount').addEventListener('change', showNearestOnly);
+loadStations().then(showNearestOnly);
+</script>
+</body>
+</html>

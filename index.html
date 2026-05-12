@@ -2,30 +2,30 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>地震・潮汐ツールランチャー</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>気象・地震ツール</title>
 
 <style>
 :root{
-  --bg:#0f172a;
-  --card:#111827;
-  --line:#334155;
-  --text:#f8fafc;
-  --muted:#94a3b8;
-  --accent:#38bdf8;
-  --accent2:#818cf8;
+  --bg:#0b1220;
+  --card:#121c2f;
+  --card2:#17253d;
+  --line:rgba(255,255,255,.08);
+  --text:#f3f6fb;
+  --muted:#a9b4c7;
+  --accent:#4da3ff;
+  --accent2:#68e1fd;
 }
 
 *{
   box-sizing:border-box;
 }
 
-body{
+html,body{
   margin:0;
-  min-height:100vh;
   background:
-    radial-gradient(circle at top right,#1e293b 0%,#0f172a 45%),
-    #0f172a;
+    radial-gradient(circle at top right,#1d3557 0%,#0b1220 45%),
+    #0b1220;
   color:var(--text);
   font-family:
     -apple-system,
@@ -34,173 +34,229 @@ body{
     "Yu Gothic",
     Meiryo,
     sans-serif;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
 }
 
-.wrap{
-  width:min(1100px,100%);
+body{
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
 }
 
 header{
+  padding:42px 20px 24px;
   text-align:center;
-  margin-bottom:32px;
 }
 
-h1{
-  margin:0 0 12px;
-  font-size:clamp(28px,5vw,48px);
-  letter-spacing:.04em;
+header h1{
+  margin:0;
+  font-size:clamp(28px,5vw,44px);
+  letter-spacing:.03em;
 }
 
-.sub{
+header p{
+  margin:14px auto 0;
+  max-width:780px;
   color:var(--muted);
-  font-size:15px;
   line-height:1.8;
+  font-size:15px;
 }
 
-.grid{
+main{
+  width:min(1100px,calc(100% - 24px));
+  margin:0 auto 40px;
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
-  gap:20px;
+  gap:18px;
 }
 
 .card{
   position:relative;
   overflow:hidden;
-  background:rgba(17,24,39,.92);
+  background:
+    linear-gradient(180deg,var(--card2),var(--card));
   border:1px solid var(--line);
-  border-radius:24px;
-  padding:28px;
-  text-decoration:none;
-  color:inherit;
+  border-radius:22px;
+  padding:22px;
+  box-shadow:
+    0 12px 30px rgba(0,0,0,.35);
   transition:
-    transform .2s ease,
-    border-color .2s ease,
-    box-shadow .2s ease;
-  backdrop-filter:blur(10px);
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
 }
 
 .card:hover{
-  transform:translateY(-6px);
-  border-color:var(--accent);
-  box-shadow:0 20px 40px rgba(0,0,0,.35);
-}
-
-.card::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    linear-gradient(
-      135deg,
-      rgba(56,189,248,.12),
-      rgba(129,140,248,.10)
-    );
-  pointer-events:none;
+  transform:translateY(-4px);
+  border-color:rgba(104,225,253,.35);
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.42);
 }
 
 .icon{
-  font-size:54px;
+  width:64px;
+  height:64px;
+  border-radius:18px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:34px;
+  background:
+    linear-gradient(135deg,#22406d,#10203b);
   margin-bottom:18px;
 }
 
-.title{
+.card h2{
+  margin:0 0 12px;
   font-size:24px;
-  font-weight:700;
-  margin-bottom:12px;
 }
 
-.desc{
+.card p{
+  margin:0 0 18px;
   color:var(--muted);
   line-height:1.8;
   font-size:14px;
 }
 
-.badge{
-  display:inline-block;
-  margin-top:18px;
-  padding:8px 14px;
+.tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-bottom:22px;
+}
+
+.tag{
+  font-size:12px;
+  padding:6px 10px;
   border-radius:999px;
-  background:rgba(56,189,248,.12);
-  color:#7dd3fc;
-  font-size:13px;
+  background:rgba(255,255,255,.07);
+  color:#dce7f8;
+  border:1px solid rgba(255,255,255,.06);
+}
+
+.open-btn{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  color:white;
+  background:
+    linear-gradient(135deg,var(--accent),var(--accent2));
+  padding:14px 18px;
+  border-radius:14px;
   font-weight:700;
+  box-shadow:
+    0 8px 20px rgba(77,163,255,.28);
+}
+
+.open-btn:hover{
+  filter:brightness(1.06);
 }
 
 footer{
-  margin-top:32px;
+  margin-top:auto;
   text-align:center;
-  color:#64748b;
+  padding:18px;
+  color:#91a0b7;
   font-size:12px;
+}
+
+.note{
+  width:min(1100px,calc(100% - 24px));
+  margin:0 auto 20px;
+  padding:16px 18px;
+  border-radius:16px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.06);
+  color:#c8d3e3;
+  line-height:1.8;
+  font-size:13px;
+}
+
+@media (max-width:640px){
+
+  header{
+    padding-top:30px;
+  }
+
+  .card{
+    padding:18px;
+  }
+
+  .card h2{
+    font-size:21px;
+  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
-
 <header>
-  <h1>地震・潮汐ツール</h1>
+  <h1>気象・地震ツール</h1>
 
-  <div class="sub">
-    地震情報と潮汐情報を表示するツール集<br>
-    使用したい機能を選択してください
-  </div>
+  <p>
+    地図表示、日の出・日の入境界線、地震情報、潮汐情報をブラウザだけで表示できます。
+  </p>
 </header>
 
-<section class="grid">
+<main>
 
-  <a class="card"
-     href="./震央近傍地点の当日潮汐表示.html">
+  <section class="card">
+
+    <div class="icon">🌍</div>
+
+    <h2>夜の境界線 地理院地図版</h2>
+
+    <p>
+      地理院地図上に、日の出側・日の入側の境界線を描画します。<br>
+      時刻格子線、薄明、現在時刻表示にも対応しています。
+    </p>
+
+    <div class="tags">
+      <span class="tag">地理院地図</span>
+      <span class="tag">日の出</span>
+      <span class="tag">日の入</span>
+      <span class="tag">薄明</span>
+      <span class="tag">時刻格子</span>
+    </div>
+
+    <a class="open-btn" href="sunrise_grid.html">
+      開く →
+    </a>
+
+  </section>
+
+  <section class="card">
 
     <div class="icon">🌊</div>
 
-    <div class="title">
-      震央近傍地点の当日潮汐表示
+    <h2>震央近傍 潮汐表示</h2>
+
+    <p>
+      気象庁の地震情報から震央付近を取得し、
+      近傍地点の潮汐情報を一覧表示します。<br>
+      任意座標入力にも対応しています。
+    </p>
+
+    <div class="tags">
+      <span class="tag">地震情報</span>
+      <span class="tag">潮汐</span>
+      <span class="tag">気象庁</span>
+      <span class="tag">震央</span>
+      <span class="tag">任意座標</span>
     </div>
 
-    <div class="desc">
-      地震の震央付近にある潮位観測地点を抽出し、
-      当日の満潮・干潮・潮回りを表示します。
-    </div>
+    <a class="open-btn" href="tide_quake_jma_button.html">
+      開く →
+    </a>
 
-    <div class="badge">
-      潮汐解析
-    </div>
+  </section>
 
-  </a>
-
-  <a class="card"
-     href="./地震地点を取得して潮汐.html">
-
-    <div class="icon">🌎</div>
-
-    <div class="title">
-      地震地点取得＋潮汐表示
-    </div>
-
-    <div class="desc">
-      地震地点情報を取得し、
-      近傍地点の潮汐情報を連携表示します。
-    </div>
-
-    <div class="badge">
-      地震連携
-    </div>
-
-  </a>
-
-</section>
+</main>
 
 <footer>
-  Local HTML Launcher
+  HTML単体動作版
 </footer>
-
-</div>
 
 </body>
 </html>
