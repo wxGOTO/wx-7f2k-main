@@ -4,6 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>夜の境界線 地理院地図版</title>
+
+<!-- Created by wxGOTO -->
+
 <style>
 html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Yu Gothic',Meiryo,sans-serif;background:#111;overflow:hidden}
 #map{position:fixed;inset:0;background:#d7e3ea;touch-action:none;cursor:grab}
@@ -79,7 +82,7 @@ button:hover{background:#2f4059}
   <button data-fit="miyako">宮古・八重山</button>
 </div>
 <div id="status" class="status"></div>
-<div class="note">これは基準地点の日の出・日の入ではなく、指定時刻における地球全体の明暗境界です。Zoom Earthの「夜の境界」に近い考え方です。雲・地形・衛星画像の明暗は反映しません。線上の時刻表示は、この境界を描いている指定時刻です。</div>
+<div class="note">これは基準地点の日の出・日の入ではなく、指定時刻における地球全体の明暗境界です。Zoom Earthの「夜の境界」に近い考え方です。雲・地形・衛星画像の明暗は反映しません。線上の時刻表示は、この境界を描いている指定時刻です。<br>Created by wxGOTO </div>
 </div>
 <div class="zoomctl"><button id="zin">＋</button><button id="zout">−</button></div>
 <div class="legend"><div><span class="sw boundary"></span>白：夜の境界線</div><div><span class="sw rise"></span>水色：日の出側</div><div><span class="sw set"></span>橙色：日の入側</div><div>破線：時刻格子線</div></div>
@@ -349,5 +352,6 @@ $('panelClose').onclick=()=>{ document.body.classList.add('panelClosed'); setTim
 renderAll();
 })();
 </script>
+
 </body>
 </html>
