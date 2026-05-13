@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>震央近傍任意地点 潮汐表示（任意中心座標対応版）</title>
+<title>震央近傍任意地点 潮汐表示</title>
 
 <!-- Created by wxGOTO -->
 
@@ -17,12 +17,47 @@ main{max-width:1120px;margin:0 auto;padding:14px}.card{background:var(--card);bo
 label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}input,select,button,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px;background:white;box-sizing:border-box;width:100%}
 button{background:var(--accent);color:white;border-color:var(--accent);font-weight:700;cursor:pointer}button.secondary{background:white;color:var(--ink);border-color:var(--line)}button:disabled{opacity:.55;cursor:not-allowed}
 table{width:100%;border-collapse:collapse;font-size:14px;background:white}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f2f4f7;white-space:nowrap}.small{font-size:12px;color:var(--muted)}.warn{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.caution{color:var(--warn);font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.log{white-space:pre-wrap;background:#0b1020;color:#d1d5db;border-radius:10px;padding:10px;font-size:12px;max-height:260px;overflow:auto}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef4ff;color:#1d4ed8;font-size:12px;margin:2px 4px 2px 0}.nowrap{white-space:nowrap}
+
+.result-controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:10px;background:#f9fafb;border:1px solid var(--line);border-radius:10px}
+.result-controls label{display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-size:13px;font-weight:700}
+.result-controls input[type="checkbox"]{width:auto;margin:0;padding:0}
+/* 潮回りは通常表示でも縦並びにする */
+#resultTable .cycle-list{display:flex;flex-direction:column;gap:1px;min-width:0}
+#resultTable .cycle-line{white-space:nowrap}
+
+/* 資料用表示は、スクショで余白が出すぎないように表幅を内容寄りにする */
+body.presentation-on main{max-width:1280px}
+body.presentation-on #resultTable{font-size:17px;width:auto;min-width:760px;max-width:100%;table-layout:auto}
+body.presentation-on #resultTable th,body.presentation-on #resultTable td{padding:7px 12px}
+body.presentation-on #resultTable th{background:#e5e7eb;color:#111827;font-weight:800}
+body.presentation-on #resultTable td{border-bottom:2px solid #d1d5db}
+body.presentation-on #resultTable td:first-child{font-weight:800;white-space:nowrap}
+body.presentation-on #summary{font-size:15px;color:#374151;margin-bottom:8px}
+body.presentation-on #resultTable td{line-height:1.38}
+body.presentation-on #resultTable .tide-list{display:flex;flex-direction:column;gap:1px;min-width:0}
+body.presentation-on #resultTable .tide-line{white-space:nowrap}
+body.presentation-on #resultTable .cycle-list{gap:1px}
+
+body.presentation-on .result-controls{gap:10px;padding:7px 10px;margin-top:8px}
+body.presentation-on .result-controls label{font-size:12px}
+body.presentation-on .tide-mode-controls{grid-template-columns:1fr 1fr 1fr;gap:8px!important;margin-top:8px!important}
+body.presentation-on .tide-mode-controls label{font-size:12px;margin-bottom:2px}
+body.presentation-on .tide-mode-controls select{padding:7px 8px}
+body.presentation-on #resultTable.cols-5 th:nth-child(1),body.presentation-on #resultTable.cols-5 td:nth-child(1){width:86px}
+body.presentation-on #resultTable.cols-5 th:nth-child(2),body.presentation-on #resultTable.cols-5 td:nth-child(2){width:150px}
+body.presentation-on #resultTable.cols-5 th:nth-child(3),body.presentation-on #resultTable.cols-5 td:nth-child(3){width:230px}
+body.presentation-on #resultTable.cols-5 th:nth-child(4),body.presentation-on #resultTable.cols-5 td:nth-child(4){width:230px}
+body.presentation-on #resultTable.cols-5 th:nth-child(5),body.presentation-on #resultTable.cols-5 td:nth-child(5){width:150px}
+body.presentation-on #resultTable.cols-4 th:nth-child(1),body.presentation-on #resultTable.cols-4 td:nth-child(1){width:90px}
+body.presentation-on #resultTable.cols-4 th:nth-child(2),body.presentation-on #resultTable.cols-4 td:nth-child(2){width:230px}
+body.presentation-on #resultTable.cols-4 th:nth-child(3),body.presentation-on #resultTable.cols-4 td:nth-child(3){width:230px}
+body.presentation-on #resultTable.cols-4 th:nth-child(4),body.presentation-on #resultTable.cols-4 td:nth-child(4){width:150px}
 </style>
 </head>
 <body>
 <header>
-<h1>震央近傍地点の当日潮汐表示（任意中心座標対応版）</h1>
-<div class="small" style="color:#d1d5db">気象庁 地震JSON + 気象庁 潮位表 + tide736 APIをブラウザから取得します。潮位は天文潮位の予測値です。</div>
+<h1>震央近傍地点の潮汐表示</h1>
+<div class="small" style="color:#d1d5db">気象庁 地震JSON + 気象庁 潮位表 + tide736 APIをブラウザから取得します。地震発生時刻以降の満潮・干潮を表示します。潮位は天文潮位の予測値です。</div>
 <div class="header-actions">
 <a class="header-link-btn" href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">気象庁の地震情報ページを開く</a>
 </div>
@@ -71,13 +106,24 @@ https://api.codetabs.com/v1/proxy?quest=</textarea></div>
 <section class="card">
 <h2>3. 結果</h2>
 <div id="summary" class="small"></div>
-<div style="overflow:auto;margin-top:8px"><table id="resultTable"><thead><tr><th>順</th><th>地点</th><th>満潮</th><th>干潮</th><th>潮回り</th><th>距離</th><th>緯度経度</th><th>元ページ</th><th>状態</th></tr></thead><tbody></tbody></table></div>
+<div class="result-controls">
+<label><input id="presentationMode" type="checkbox">資料用表示モード</label>
+<label><input id="showDistance" type="checkbox" checked>震央からの距離を表示</label>
+<label><input id="showTideCycle" type="checkbox" checked>潮回りを表示</label>
+<label><input id="showSourceStatus" type="checkbox">元ページ・状態を表示</label>
+</div>
+<div class="grid tide-mode-controls" style="margin-top:10px">
+<div><label>潮汐表示モード</label><select id="tideDisplayMode"><option value="after" selected>地震発生後の潮汐</option><option value="date">指定日の潮汐</option></select></div>
+<div><label>地震発生後モードの表示期間</label><select id="afterHours"><option value="24">24時間</option><option value="48" selected>48時間</option><option value="72">72時間</option></select></div>
+<div><label>表示回数</label><select id="eventCount"><option value="1">満潮・干潮 各1回</option><option value="2" selected>満潮・干潮 各2回</option><option value="3">満潮・干潮 各3回</option><option value="4">満潮・干潮 各4回</option></select></div>
+</div>
+<div style="overflow:auto;margin-top:8px"><table id="resultTable"><thead></thead><tbody></tbody></table></div>
 </section>
 <section class="card"><h2>ログ</h2><div id="log" class="log"></div></section>
 <section class="card small">
 <h2>注意</h2>
-<p>単体HTMLの試作版です。ブラウザの制限で気象庁ページを直接読み取れない場合は、プロキシ経由で再試行します。</p>
-<p>潮位表は実測潮位ではなく、天文潮位の予測値です。地震後の津波・副振動・気象要因による水位変化の判断には使えません。</p>
+<p>単体HTML版です。ブラウザの制限で気象庁ページを直接読み取れない場合は、プロキシ経由で再試行します。</p>
+<p>潮位表は実測潮位ではなく、天文潮位の予測値です。「地震発生後の潮汐」では地震発生時刻より前の満潮・干潮を表示対象から外します。「指定日の潮汐」では地震発生時刻を無視して指定日だけを表示します。地震後の津波・副振動・気象要因による水位変化の判断には使えません。</p>
 <p>潮回り（大潮・中潮・小潮・長潮・若潮）は tide736 API の moon.title を表示します。直接取得に失敗した場合は、tide736用プロキシ候補を上から順に試します。</p>
 <p>tide736は気象庁・海上保安庁の公式サービスではありません。API停止・仕様変更・アクセス制限の可能性があります。</p>
 <p> Created by wxGOTO </p>
@@ -102,6 +148,10 @@ let STATIONS = [
 ];
 let stationsReady = false;
 let quakeItems = [];
+let CURRENT_QUAKE_TIME = null;
+let CURRENT_ROWS = [];
+const TIDE_HTML_CACHE = new Map();
+const TIDE_CYCLE_CACHE = new Map();
 function proxyUrl(url){ const p = $('proxyUrl').value.trim(); return p ? p + encodeURIComponent(url) : url; }
 async function fetchText(url){
   try{
@@ -201,6 +251,23 @@ async function loadStations(){
 }
 async function ensureStations(){ if(!stationsReady) await loadStations(); }
 function haversineKm(a,b,c,d){ const R=6371, rad=x=>x*Math.PI/180; const dLat=rad(c-a), dLon=rad(d-b); const h=Math.sin(dLat/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLon/2)**2; return 2*R*Math.asin(Math.sqrt(h)); }
+function bearingDeg(lat1, lon1, lat2, lon2){
+  const rad = x => x * Math.PI / 180;
+  const φ1 = rad(lat1), φ2 = rad(lat2);
+  const dLon = rad(lon2 - lon1);
+  const y = Math.sin(dLon) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLon);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function bearingToText(deg){
+  const dirs = ['北','北北東','北東','東北東','東','東南東','南東','南南東','南','南南西','南西','西南西','西','西北西','北西','北北西'];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
+function formatDistanceDirection(lat1, lon1, lat2, lon2){
+  const dist = haversineKm(lat1, lon1, lat2, lon2);
+  const dir = bearingToText(bearingDeg(lat1, lon1, lat2, lon2));
+  return `${dir} ${dist.toFixed(1)}km`;
+}
 function getStationCount(){
   const n = Number($('stationCount').value);
   if(!Number.isFinite(n)) return 4;
@@ -208,12 +275,90 @@ function getStationCount(){
 }
 function nearestStations(){
   const lat=Number($('lat').value), lon=Number($('lon').value), count=getStationCount();
-  return STATIONS.map(s=>({...s,dist:haversineKm(lat,lon,s.lat,s.lon)})).sort((a,b)=>a.dist-b.dist).slice(0,count);
+  return STATIONS.map(s=>{
+    const dist = haversineKm(lat,lon,s.lat,s.lon);
+    return {...s, dist, distText:formatDistanceDirection(lat,lon,s.lat,s.lon)};
+  }).sort((a,b)=>a.dist-b.dist).slice(0,count);
 }
 function tideUrl(code){ const [y,m,d] = $('date').value.split('-').map(Number); return `https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=${encodeURIComponent(code)}&ys=${y}&ms=${m}&ds=${d}&ye=${y}&me=${m}&de=${d}&LV=DL&S_HILO=on`; }
+function addDays(dateStr, days){
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  const dt = new Date(y, m - 1, d + Number(days || 0));
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+function dateParts(dateStr){
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  return {y,m,d};
+}
+function tideUrlForRange(code, startDate, endDate){
+  const a = dateParts(startDate), b = dateParts(endDate);
+  return `https://www.data.jma.go.jp/kaiyou/db/tide/suisan/suisan.php?stn=${encodeURIComponent(code)}&ys=${a.y}&ms=${a.m}&ds=${a.d}&ye=${b.y}&me=${b.m}&de=${b.d}&LV=DL&S_HILO=on`;
+}
+function makeLocalDateTime(dateStr, hm){
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  const [hh,mm] = String(hm).split(':').map(Number);
+  return new Date(y, m - 1, d, hh, mm, 0, 0);
+}
+function formatMdHm(dateObj){
+  return `${dateObj.getMonth()+1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2,'0')}:${String(dateObj.getMinutes()).padStart(2,'0')}`;
+}
+function isPresentationMode(){ return !!($('presentationMode') && $('presentationMode').checked); }
+function showDistanceColumn(){ return !($('showDistance') && !$('showDistance').checked); }
+function showTideCycleColumn(){ return !($('showTideCycle') && !$('showTideCycle').checked); }
+function showSourceStatusColumn(){ return !!($('showSourceStatus') && $('showSourceStatus').checked); }
+function presentationTideCell(html){
+  const src = String(html || '').trim();
+  if(!src) return '';
+  if(src.includes('caution') || src.includes('warn')) return src;
+  const lines = src.split(/<br\s*\/?\s*>/i).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return src;
+  return '<div class="tide-list">' + lines.map(x => `<div class="tide-line">${x}</div>`).join('') + '</div>';
+}
+function presentationCycleCell(html){
+  const src = String(html || '').trim();
+  if(!src) return '';
+  const normalized = src.replace(/、/g, '<br>');
+  const lines = normalized.split(/<br\s*\/?\s*>/i).map(x=>x.trim()).filter(Boolean);
+  if(!lines.length) return src;
+  return '<div class="cycle-list">' + lines.map(x => `<div class="cycle-line">${x}</div>`).join('') + '</div>';
+}
+function setResultHeader(){
+  const pres = isPresentationMode();
+  const th = [];
+  if(!pres) th.push('順');
+  th.push('地点');
+  if(showDistanceColumn()) th.push('震央からの距離');
+  th.push('満潮');
+  th.push('干潮');
+  if(showTideCycleColumn()) th.push('潮回り');
+  if(!pres) th.push('緯度経度');
+  if(!pres || showSourceStatusColumn()) th.push('元ページ');
+  if(!pres || showSourceStatusColumn()) th.push('状態');
+  const table = $('resultTable');
+  table.querySelector('thead').innerHTML = '<tr>' + th.map(x => `<th>${esc(x)}</th>`).join('') + '</tr>';
+  table.className = pres ? `cols-${th.length}` : '';
+  document.body.classList.toggle('presentation-on', pres);
+}
 function rowHtml(s, idx, hilo={}, status='未取得'){
+  const pres = isPresentationMode();
   const url = tideUrl(s.code);
-  return `<tr><td>${idx}</td><td><b>${esc(s.name)}</b></td><td>${hilo.high||''}</td><td>${hilo.low||''}</td><td class="nowrap">${hilo.cycle||''}</td><td class="nowrap">${s.dist.toFixed(1)} km</td><td class="mono small">${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}</td><td><a href="${url}" target="_blank" rel="noopener">開く</a></td><td class="small">${status}</td></tr>`;
+  const high = pres ? presentationTideCell(hilo.high) : (hilo.high || '');
+  const low = pres ? presentationTideCell(hilo.low) : (hilo.low || '');
+  const cells = [];
+  if(!pres) cells.push(`<td>${idx}</td>`);
+  cells.push(`<td><b>${esc(s.name)}</b></td>`);
+  if(showDistanceColumn()) cells.push(`<td class="nowrap">${esc(s.distText || `${s.dist.toFixed(1)} km`)}</td>`);
+  cells.push(`<td>${high}</td>`);
+  cells.push(`<td>${low}</td>`);
+  if(showTideCycleColumn()) cells.push(`<td>${presentationCycleCell(hilo.cycle)}</td>`);
+  if(!pres) cells.push(`<td class="mono small">${s.lat.toFixed(3)}, ${s.lon.toFixed(3)}</td>`);
+  if(!pres || showSourceStatusColumn()) cells.push(`<td><a href="${url}" target="_blank" rel="noopener">開く</a></td>`);
+  if(!pres || showSourceStatusColumn()) cells.push(`<td class="small">${status}</td>`);
+  return `<tr>${cells.join('')}</tr>`;
+}
+function renderResults(){
+  setResultHeader();
+  $('resultTable').querySelector('tbody').innerHTML = CURRENT_ROWS.map((r,i)=>rowHtml(r.s,i+1,r.hilo,r.status)).join('');
 }
 function tide736Url(dateStr){
   const [y,m,d] = String(dateStr).split('-').map(Number);
@@ -276,12 +421,28 @@ async function fetchTideCycleFromTide736(dateStr){
     const moon = item?.moon || {};
     const title = moon.title || '';
     if(!title) throw new Error('moon.titleなし');
-    log(`潮回り取得成功 tide736: ${title}${moon.age !== undefined ? ' 月齢 '+moon.age : ''}`);
-    return `<b>${esc(title)}</b>`;
+    log(`潮回り取得成功 tide736: ${dateStr} ${title}${moon.age !== undefined ? ' 月齢 '+moon.age : ''}`);
+    return {dateStr, title, html:`<b>${esc(title)}</b>`};
   }catch(e){
-    log(`潮回り取得失敗 tide736: ${e.message}`);
-    return `<span class="warn">tide736取得失敗</span>`;
+    log(`潮回り取得失敗 tide736 ${dateStr}: ${e.message}`);
+    return {dateStr, title:'取得失敗', html:`<span class="warn">${esc(dateStr)} tide736取得失敗</span>`};
   }
+}
+async function fetchTideCyclesForDates(dateList){
+  const unique = Array.from(new Set(dateList.filter(Boolean)));
+  const items = [];
+  for(const d of unique){
+    items.push(await fetchTideCycleFromTide736(d));
+  }
+  return items;
+}
+function formatDateShort(dateStr){
+  const [y,m,d] = String(dateStr).split('-').map(Number);
+  return `${m}/${d}`;
+}
+function formatCycleSummary(cycles){
+  if(!cycles || !cycles.length) return '';
+  return cycles.map(c => `${formatDateShort(c.dateStr)} ${c.html}`).join('、');
 }
 function splitPairs(tokens){
   const pairs=[];
@@ -291,56 +452,216 @@ function splitPairs(tokens){
   return pairs;
 }
 function fmtPairs(pairs, dateStr){
-  const day = String(Number(String(dateStr).split('-')[2] || ''));
   return pairs
     .filter(p=>p.time !== '*' && p.level !== '*')
-    .map(p=>`${day}/${p.time} ${p.level}cm`)
+    .map(p=>`${Number(String(dateStr).split('-')[1])}/${Number(String(dateStr).split('-')[2])} ${p.time} ${p.level}cm`)
     .join('<br>') || '<span class="caution">該当なし</span>';
 }
-function extractHiloFromHtml(html, dateStr){
+function parseHiloRowsFromHtml(html, dateList){
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const [y,m,d]=dateStr.split('-').map(Number);
-  const datePat = `${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
-  let bestText = '';
+  const rowTexts = [];
+  function datePatOf(dateStr){
+    const [y,m,d]=dateStr.split('-').map(Number);
+    return `${y}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+  }
+  const pats = dateList.map(d => ({dateStr:d, pat:datePatOf(d)}));
   for(const tr of Array.from(doc.querySelectorAll('tr'))){
     const tx = tr.textContent.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
-    if(tx.includes(datePat)){ bestText = tx; break; }
+    const hit = pats.find(x => tx.includes(x.pat));
+    if(hit) rowTexts.push({dateStr:hit.dateStr, text:tx});
   }
-  if(!bestText){
+  if(rowTexts.length < dateList.length){
     const text = (doc.body ? doc.body.textContent : html).replace(/\u00a0/g,' ').replace(/[ \t\r\f]+/g,' ').replace(/\n+/g,'\n');
-    const line = text.split('\n').find(x=>x.includes(datePat));
-    if(line) bestText = line.trim();
-    else { const idx=text.indexOf(datePat); if(idx>=0) bestText=text.slice(idx, idx+360).trim(); }
+    for(const x of pats){
+      if(rowTexts.some(r => r.dateStr === x.dateStr)) continue;
+      const line = text.split('\n').find(t=>t.includes(x.pat));
+      if(line) rowTexts.push({dateStr:x.dateStr, text:line.trim()});
+      else {
+        const idx=text.indexOf(x.pat);
+        if(idx>=0) rowTexts.push({dateStr:x.dateStr, text:text.slice(idx, idx+360).trim()});
+      }
+    }
   }
-  if(!bestText) return {high:'',low:'', status:'<span class="warn">解析不可: 日付行なし</span>'};
-  let row = bestText.replace(/^.*?\d{4}\/\d{2}\/\d{2}\([^)]*\)\s*/, ' ')
+  const result = [];
+  for(const r of rowTexts){
+    let row = r.text.replace(/^.*?\d{4}\/\d{2}\/\d{2}\([^)]*\)\s*/, ' ')
                     .replace(/Image:\s*(朔|新月|上弦の月|望|満月|下弦の月)/g,' ')
                     .replace(/(朔|新月|上弦の月|望|満月|下弦の月)/g,' ')
                     .replace(/\s+/g,' ').trim();
-  const tokens = row.split(' ').filter(x => /^\d{1,2}:\d{2}$/.test(x) || /^-?\d+$/.test(x) || x==='*');
-  const pairs = splitPairs(tokens);
-  if(pairs.length < 8) return {high:'',low:'', status:`<span class="warn">解析不可: 値不足</span><br><span class="mono">${esc(bestText.slice(0,160))}</span>`};
-  return {high:fmtPairs(pairs.slice(0,4), dateStr), low:fmtPairs(pairs.slice(4,8), dateStr), status:'<span class="ok">取得</span>'};
+    const tokens = row.split(' ').filter(x => /^\d{1,2}:\d{2}$/.test(x) || /^-?\d+$/.test(x) || x==='*');
+    const pairs = splitPairs(tokens);
+    if(pairs.length >= 8){
+      result.push({dateStr:r.dateStr, high:pairs.slice(0,4), low:pairs.slice(4,8)});
+    }
+  }
+  return result;
 }
-async function showNearestOnly(){ await ensureStations(); const ns=nearestStations(); const count=getStationCount(); $('summary').innerHTML = `震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 地点リスト: ${stationsReady ? '全国版' : '予備版'}`; $('resultTable').querySelector('tbody').innerHTML = ns.map((s,i)=>rowHtml(s,i+1)).join(''); }
+function formatEventList(events){
+  return events
+    .map(e => `${formatMdHm(e.at)} ${e.level}cm`)
+    .join('<br>') || '<span class="caution">該当なし</span>';
+}
+function dateListFromRange(startDateStr, daysToFetch){
+  const n = Math.max(1, Number(daysToFetch) || 1);
+  return Array.from({length:n}, (_,i)=>addDays(startDateStr, i));
+}
+function daysNeededForAfterHours(hours){
+  const h = Math.max(1, Number(hours) || 48);
+  return Math.ceil(h / 24) + 1;
+}
+function eventDateStr(e){
+  return `${e.at.getFullYear()}-${String(e.at.getMonth()+1).padStart(2,'0')}-${String(e.at.getDate()).padStart(2,'0')}`;
+}
+function usedDatesFromHilo(hilo){
+  const set = new Set();
+  for(const e of [...(hilo.highEvents || []), ...(hilo.lowEvents || [])]) set.add(eventDateStr(e));
+  return Array.from(set).sort();
+}
+function attachCycleToHilo(hilo, cycles, fallbackDates){
+  const cycleMap = new Map((cycles || []).map(c => [c.dateStr, c]));
+  let dates = usedDatesFromHilo(hilo);
+  if(!dates.length) dates = fallbackDates || [];
+  const selected = dates.map(d => cycleMap.get(d)).filter(Boolean);
+  hilo.cycle = formatCycleSummary(selected);
+  return hilo;
+}
+function extractHiloAfterFromHtml(html, startDateStr, quakeTime, options={}){
+  const hours = Math.max(1, Number(options.hours) || 48);
+  const eventCount = Math.max(1, Number(options.eventCount) || 2);
+  const dateList = options.dateList || dateListFromRange(startDateStr, daysNeededForAfterHours(hours));
+  const rows = parseHiloRowsFromHtml(html, dateList);
+  if(!rows.length) return {high:'',low:'', highEvents:[], lowEvents:[], status:'<span class="warn">解析不可: 日付行なし</span>'};
+  const threshold = quakeTime instanceof Date && !Number.isNaN(quakeTime.getTime()) ? quakeTime : makeLocalDateTime(startDateStr, '00:00');
+  const upper = new Date(threshold.getTime() + hours * 60 * 60 * 1000);
+  const highEvents = [];
+  const lowEvents = [];
+  for(const r of rows){
+    for(const p of r.high){
+      if(p.time === '*' || p.level === '*') continue;
+      const at = makeLocalDateTime(r.dateStr, p.time);
+      if(at >= threshold && at <= upper) highEvents.push({at, level:p.level});
+    }
+    for(const p of r.low){
+      if(p.time === '*' || p.level === '*') continue;
+      const at = makeLocalDateTime(r.dateStr, p.time);
+      if(at >= threshold && at <= upper) lowEvents.push({at, level:p.level});
+    }
+  }
+  highEvents.sort((a,b)=>a.at-b.at);
+  lowEvents.sort((a,b)=>a.at-b.at);
+  const high = highEvents.slice(0,eventCount);
+  const low = lowEvents.slice(0,eventCount);
+  const statusNote = (high.length < eventCount || low.length < eventCount) ? '<span class="caution">取得 一部不足</span>' : '<span class="ok">取得</span>';
+  return {high:formatEventList(high), low:formatEventList(low), highEvents:high, lowEvents:low, status:statusNote};
+}
+function extractHiloForDateFromHtml(html, dateStr, options={}){
+  const eventCount = Math.max(1, Number(options.eventCount) || 2);
+  const rows = parseHiloRowsFromHtml(html, [dateStr]);
+  if(!rows.length) return {high:'',low:'', highEvents:[], lowEvents:[], status:'<span class="warn">解析不可: 日付行なし</span>'};
+  const row = rows[0];
+  const highEvents = row.high
+    .filter(p=>p.time !== '*' && p.level !== '*')
+    .map(p=>({at:makeLocalDateTime(dateStr, p.time), level:p.level}))
+    .sort((a,b)=>a.at-b.at)
+    .slice(0,eventCount);
+  const lowEvents = row.low
+    .filter(p=>p.time !== '*' && p.level !== '*')
+    .map(p=>({at:makeLocalDateTime(dateStr, p.time), level:p.level}))
+    .sort((a,b)=>a.at-b.at)
+    .slice(0,eventCount);
+  const statusNote = (highEvents.length < eventCount || lowEvents.length < eventCount) ? '<span class="caution">取得 一部不足</span>' : '<span class="ok">取得</span>';
+  return {high:formatEventList(highEvents), low:formatEventList(lowEvents), highEvents, lowEvents, status:statusNote};
+}
+function extractHiloFromHtml(html, dateStr){
+  return extractHiloForDateFromHtml(html, dateStr, {eventCount:2});
+}
+async function showNearestOnly(){
+  await ensureStations();
+  const ns=nearestStations();
+  const count=getStationCount();
+  $('summary').innerHTML = `震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 地点リスト: ${stationsReady ? '全国版' : '予備版'}`;
+  CURRENT_ROWS = ns.map(s => ({s, hilo:{}, status:'未取得'}));
+  renderResults();
+}
+function cycleSubset(cycles, dates){
+  const set = new Set(dates || []);
+  return (cycles || []).filter(c => set.has(c.dateStr));
+}
+async function fetchTideCyclesForDatesCached(dateList){
+  const result = [];
+  for(const d of dateList){
+    if(TIDE_CYCLE_CACHE.has(d)){
+      result.push(TIDE_CYCLE_CACHE.get(d));
+    }else{
+      const c = await fetchTideCycleFromTide736(d);
+      TIDE_CYCLE_CACHE.set(d, c);
+      result.push(c);
+    }
+  }
+  return result;
+}
+async function fetchStationTideHtmlCached(code, startDate, endDate){
+  const key = `${code}|${startDate}|${endDate}`;
+  if(TIDE_HTML_CACHE.has(key)){
+    log(`潮汐取得: ${code} キャッシュ使用 ${startDate}〜${endDate}`);
+    return TIDE_HTML_CACHE.get(key);
+  }
+  const html = await fetchText(tideUrlForRange(code, startDate, endDate));
+  TIDE_HTML_CACHE.set(key, html);
+  return html;
+}
 async function fetchTides(){
   await ensureStations();
   const ns=nearestStations();
   const count=getStationCount();
   const dateStr = $('date').value;
-  const cycleLabel = await fetchTideCycleFromTide736(dateStr);
-  $('summary').innerHTML = `震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点の ${esc(dateStr)} の満潮・干潮 / 地点リスト: ${stationsReady ? '全国版' : '予備版'}`;
-  const tbody=$('resultTable').querySelector('tbody'); tbody.innerHTML = ns.map((s,i)=>rowHtml(s,i+1,{cycle:cycleLabel},'取得待ち')).join('');
+  const mode = $('tideDisplayMode')?.value || 'after';
+  const eventCount = Math.max(1, Number($('eventCount')?.value) || 2);
+  const afterHours = Math.max(1, Number($('afterHours')?.value) || 48);
+
+  // 再表示を軽くするため、選択肢の最大範囲である72時間相当（対象日＋3日）を1回だけ取得してキャッシュする。
+  // 表示期間・表示回数・資料用表示モードの変更時は、このキャッシュを再解析するだけなので再通信しにくい。
+  const fetchDateList = dateListFromRange(dateStr, 4);
+  const startForUrl = fetchDateList[0];
+  const endForUrl = fetchDateList[fetchDateList.length - 1];
+
+  let displayDateList, threshold = null;
+  if(mode === 'after'){
+    threshold = CURRENT_QUAKE_TIME instanceof Date && !Number.isNaN(CURRENT_QUAKE_TIME.getTime()) ? CURRENT_QUAKE_TIME : makeLocalDateTime(dateStr, '00:00');
+    displayDateList = dateListFromRange(dateStr, daysNeededForAfterHours(afterHours));
+  }else{
+    displayDateList = [dateStr];
+  }
+
+  const allCycles = await fetchTideCyclesForDatesCached(fetchDateList);
+  const cycles = cycleSubset(allCycles, displayDateList);
+  const cycleSummary = formatCycleSummary(cycles);
+  if(mode === 'after'){
+    $('summary').innerHTML = `対象: 地震発生後の潮汐 / 基準時刻: <span class="mono">${esc(formatMdHm(threshold))}</span> / 表示期間: ${afterHours}時間 / 潮回り: ${cycleSummary || '未取得'}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
+  }else{
+    $('summary').innerHTML = `対象: 指定日の潮汐 / 指定日: <span class="mono">${esc(dateStr)}</span> / 潮回り: ${cycleSummary || '未取得'}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
+  }
+
+  CURRENT_ROWS = ns.map(s => ({s, hilo:{cycle:cycleSummary}, status:'取得待ち'}));
+  renderResults();
   for(let i=0;i<ns.length;i++){
     const s=ns[i];
     try{
       log(`潮汐取得: ${s.name} ${s.code}`);
-      const html=await fetchText(tideUrl(s.code));
-      const hilo=extractHiloFromHtml(html, dateStr);
-      hilo.cycle = cycleLabel;
-      tbody.rows[i].outerHTML = rowHtml(s,i+1,hilo,hilo.status);
+      const html=await fetchStationTideHtmlCached(s.code, startForUrl, endForUrl);
+      let hilo;
+      if(mode === 'after'){
+        hilo = extractHiloAfterFromHtml(html, dateStr, threshold, {hours:afterHours, eventCount, dateList:displayDateList});
+        attachCycleToHilo(hilo, cycles, displayDateList);
+      }else{
+        hilo = extractHiloForDateFromHtml(html, dateStr, {eventCount});
+        attachCycleToHilo(hilo, cycles, [dateStr]);
+      }
+      CURRENT_ROWS[i] = {s, hilo, status:hilo.status};
+      renderResults();
     }catch(e){
-      tbody.rows[i].outerHTML = rowHtml(s,i+1,{cycle:cycleLabel},`<span class="warn">取得失敗</span><br>${esc(e.message)}`);
+      CURRENT_ROWS[i] = {s, hilo:{cycle:cycleSummary}, status:`<span class="warn">取得失敗</span><br>${esc(e.message)}`};
+      renderResults();
       log(`潮汐取得失敗: ${s.name} ${s.code}: ${e.message}`);
     }
   }
@@ -465,6 +786,16 @@ function jstDateFromAny(s){
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 }
+function parseJstDateTimeFromAny(s){
+  const raw = String(s || '').trim();
+  if(!raw) return null;
+  const half = toHalfWidth(raw);
+  let m = half.match(/(\d{4})[-\/年](\d{1,2})[-\/月](\d{1,2})(?:日)?[ T　]*(\d{1,2})[:時](\d{1,2})/);
+  if(m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[4]), Number(m[5]), 0, 0);
+  const d = new Date(half);
+  if(!Number.isNaN(d.getTime())) return d;
+  return null;
+}
 function setQuakeInfo(obj, label=''){
   const c = findCoordinateInObj(obj);
   const name = findQuakeName(obj);
@@ -476,7 +807,12 @@ function setQuakeInfo(obj, label=''){
   }else{
     log('震央座標を取得できません。現在の緯度経度欄は変更していません。');
   }
-  if(dt) $('date').value = jstDateFromAny(dt);
+  if(dt){
+    $('date').value = jstDateFromAny(dt);
+    CURRENT_QUAKE_TIME = parseJstDateTimeFromAny(dt);
+  }else{
+    CURRENT_QUAKE_TIME = null;
+  }
   $('quakeInfo').innerHTML =
     `<span class="pill">震源: ${esc(name)}</span>`+
     `<span class="pill">時刻: ${esc(dt || '不明')}</span>`+
@@ -534,12 +870,20 @@ $('btnUseManualCenter').addEventListener('click', ()=>{
   $('lat').value = lat.toFixed(3);
   $('lon').value = lon.toFixed(3);
   $('quakeInfo').innerHTML=`<span class="pill">任意の中心座標を使用</span><span class="pill">座標: ${lat.toFixed(3)}, ${lon.toFixed(3)}</span>`;
-  log(`任意の中心座標を使用: ${lat.toFixed(3)}, ${lon.toFixed(3)}`);
+  CURRENT_QUAKE_TIME = null;
+  log(`任意の中心座標を使用: ${lat.toFixed(3)}, ${lon.toFixed(3)}。発生時刻は未設定のため、対象日の00:00以降として扱います。`);
   showNearestOnly();
 });
 $('btnNearestOnly').addEventListener('click', showNearestOnly);
 $('btnNearest').addEventListener('click', fetchTides);
+for(const id of ['presentationMode','showDistance','showTideCycle','showSourceStatus']){
+  $(id).addEventListener('change', renderResults);
+}
+for(const id of ['tideDisplayMode','afterHours','eventCount']){
+  $(id).addEventListener('change', () => { if(CURRENT_ROWS.length) fetchTides(); });
+}
 $('stationCount').addEventListener('change', showNearestOnly);
+setResultHeader();
 loadStations().then(showNearestOnly);
 </script>
 </body>
