@@ -14,7 +14,8 @@ header{padding:18px 16px;background:#111827;color:white} h1{font-size:19px;margi
 .header-actions{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}.header-link-btn{display:inline-block;width:auto;text-decoration:none;background:#2563eb;color:white;border:1px solid #60a5fa;border-radius:9px;padding:9px 12px;font-weight:700}.header-link-btn:hover{filter:brightness(1.08)}
 main{max-width:1120px;margin:0 auto;padding:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1;min-width:170px}
-label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}input,select,button,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px;background:white;box-sizing:border-box;width:100%}
+label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}.grid>div,.row>*{min-width:0}input,select,button,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px;background:white;box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+input[type="date"]{display:block;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;text-align:left}
 button{background:var(--accent);color:white;border-color:var(--accent);font-weight:700;cursor:pointer}button.secondary{background:white;color:var(--ink);border-color:var(--line)}button:disabled{opacity:.55;cursor:not-allowed}
 table{width:100%;border-collapse:collapse;font-size:14px;background:white}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f2f4f7;white-space:nowrap}.small{font-size:12px;color:var(--muted)}.warn{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.caution{color:var(--warn);font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.log{white-space:pre-wrap;background:#0b1020;color:#d1d5db;border-radius:10px;padding:10px;font-size:12px;max-height:260px;overflow:auto}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef4ff;color:#1d4ed8;font-size:12px;margin:2px 4px 2px 0}.nowrap{white-space:nowrap}
 
@@ -57,7 +58,7 @@ body.presentation-on #resultTable.cols-4 th:nth-child(4),body.presentation-on #r
 <body>
 <header>
 <h1>震央近傍地点の潮汐表示</h1>
-<div class="small" style="color:#d1d5db">気象庁 地震JSON + 気象庁 潮位表 + tide736 APIをブラウザから取得します。地震発生時刻以降の満潮・干潮を表示します。潮位は天文潮位の予測値です。</div>
+<div class="small" style="color:#d1d5db">気象庁 地震JSON + 気象庁 潮位表をブラウザから取得します。地震発生時刻以降の満潮・干潮を表示します。潮位は天文潮位の予測値です。潮回りは月と太陽の位置関係からHTML内計算します。判定方式はMIRC方式と気象庁方式を切り替えできます。</div>
 <div class="header-actions">
 <a class="header-link-btn" href="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map" target="_blank" rel="noopener">気象庁の地震情報ページを開く</a>
 </div>
@@ -95,11 +96,9 @@ body.presentation-on #resultTable.cols-4 th:nth-child(4),body.presentation-on #r
 <div><label>経度</label><input id="lon" type="number" step="0.001" value="138.406"></div>
 <div><label>対象日（JST）</label><input id="date" type="date"></div>
 <div><label>表示する近傍地点数</label><input id="stationCount" type="number" min="1" max="50" value="4"></div>
-<div><label>tide736 API URL</label><input id="tide736Api" value="https://api.tide736.net/get_tide.php"></div>
-<div><label>潮回り取得用 tide736地点</label><input id="tide736Ref" value="pc=13&hc=1（東京・築地想定）" readonly></div>
-<div style="grid-column:1/-1"><label>tide736用CORS回避プロキシ候補（上から順に再試行）</label><textarea id="tide736Proxies" rows="4" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:10px;font-size:15px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;">https://api.allorigins.win/raw?url=
-https://corsproxy.io/?
-https://api.codetabs.com/v1/proxy?quest=</textarea></div>
+<div><label>潮回り判定方式</label><select id="tideCycleMethod"><option value="mirc" selected>MIRC方式</option><option value="jma">気象庁方式</option></select></div>
+<div><label>潮回り計算時刻</label><input id="tideCycleTime" value="方式ごとの判定" readonly></div>
+<div id="tideCycleMethodNote" style="grid-column:1/-1" class="small">潮回りは月と太陽の位置関係からHTML内で計算しています。気象庁方式は各日12:00 JST基準で判定します。MIRC方式もHTML内で計算した目安であり、公式の潮見表と完全に一致するとは限りません。他の潮見表サイトとは表示が1日前後ずれる場合があります。</div>
 </div>
 <div class="row" style="margin-top:10px"><button id="btnNearest">指定地点数を選んで潮汐取得</button><button id="btnNearestOnly" class="secondary">指定地点数だけ表示</button></div>
 </section>
@@ -109,7 +108,7 @@ https://api.codetabs.com/v1/proxy?quest=</textarea></div>
 <div class="result-controls">
 <label><input id="presentationMode" type="checkbox">資料用表示モード</label>
 <label><input id="showDistance" type="checkbox" checked>震央からの距離を表示</label>
-<label><input id="showTideCycle" type="checkbox" checked>潮回りを表示</label>
+<label><input id="showTideCycle" type="checkbox">潮回りを表示</label>
 <label><input id="showSourceStatus" type="checkbox">元ページ・状態を表示</label>
 </div>
 <div class="grid tide-mode-controls" style="margin-top:10px">
@@ -124,8 +123,7 @@ https://api.codetabs.com/v1/proxy?quest=</textarea></div>
 <h2>注意</h2>
 <p>単体HTML版です。ブラウザの制限で気象庁ページを直接読み取れない場合は、プロキシ経由で再試行します。</p>
 <p>潮位表は実測潮位ではなく、天文潮位の予測値です。「地震発生後の潮汐」では地震発生時刻より前の満潮・干潮を表示対象から外します。「指定日の潮汐」では地震発生時刻を無視して指定日だけを表示します。地震後の津波・副振動・気象要因による水位変化の判断には使えません。</p>
-<p>潮回り（大潮・中潮・小潮・長潮・若潮）は tide736 API の moon.title を表示します。直接取得に失敗した場合は、tide736用プロキシ候補を上から順に試します。</p>
-<p>tide736は気象庁・海上保安庁の公式サービスではありません。API停止・仕様変更・アクセス制限の可能性があります。</p>
+<p>潮回り（大潮・中潮・小潮・長潮・若潮）は、月と太陽の位置関係からHTML内で計算しています。「MIRC方式」と「気象庁方式」を切り替えできます。気象庁方式は各日12:00 JST基準で判定します。MIRC方式もHTML内で計算した目安であり、公式の潮見表と完全に一致するとは限りません。他の潮見表サイトとは、判定基準の違いにより表示が1日前後ずれる場合があります。</p>
 <p> Created by wxGOTO </p>
 
 </section>
@@ -151,7 +149,6 @@ let quakeItems = [];
 let CURRENT_QUAKE_TIME = null;
 let CURRENT_ROWS = [];
 const TIDE_HTML_CACHE = new Map();
-const TIDE_CYCLE_CACHE = new Map();
 function proxyUrl(url){ const p = $('proxyUrl').value.trim(); return p ? p + encodeURIComponent(url) : url; }
 async function fetchText(url){
   try{
@@ -360,82 +357,111 @@ function renderResults(){
   setResultHeader();
   $('resultTable').querySelector('tbody').innerHTML = CURRENT_ROWS.map((r,i)=>rowHtml(r.s,i+1,r.hilo,r.status)).join('');
 }
-function tide736Url(dateStr){
+function degToRad(deg){ return deg * Math.PI / 180; }
+function normalizeDeg(deg){ return ((deg % 360) + 360) % 360; }
+function julianDayForJstNoon(dateStr){
   const [y,m,d] = String(dateStr).split('-').map(Number);
-  const base = $('tide736Api').value.trim() || 'https://api.tide736.net/get_tide.php';
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}pc=13&hc=1&yr=${y}&mn=${m}&dy=${d}&rg=day`;
+  // 12:00 JST = 03:00 UTC
+  return Date.UTC(y, m - 1, d, 3, 0, 0, 0) / 86400000 + 2440587.5;
 }
-function normalizeTide736JsonText(text){
-  const t = String(text || '').trim();
-  const first = t.indexOf('{');
-  const last = t.lastIndexOf('}');
-  if(first >= 0 && last > first) return t.slice(first, last + 1);
-  return t;
+function sunEclipticLongitude(jd){
+  const n = jd - 2451545.0;
+  const L = normalizeDeg(280.46646 + 0.98564736 * n);
+  const g = normalizeDeg(357.52911 + 0.98560028 * n);
+  const lambda = L + 1.914602 * Math.sin(degToRad(g)) + 0.019993 * Math.sin(degToRad(2 * g)) + 0.000289 * Math.sin(degToRad(3 * g));
+  return normalizeDeg(lambda);
 }
-function tide736ProxyList(){
-  return String($('tide736Proxies')?.value || '')
-    .split(/\n+/)
-    .map(x=>x.trim())
-    .filter(Boolean);
+function moonEclipticLongitude(jd){
+  const T = (jd - 2451545.0) / 36525;
+  const Lp = normalizeDeg(218.3164477 + 481267.88123421*T - 0.0015786*T*T + T*T*T/538841 - T*T*T*T/65194000);
+  const D  = normalizeDeg(297.8501921 + 445267.1114034*T - 0.0018819*T*T + T*T*T/545868 - T*T*T*T/113065000);
+  const M  = normalizeDeg(357.5291092 + 35999.0502909*T - 0.0001536*T*T + T*T*T/24490000);
+  const Mp = normalizeDeg(134.9633964 + 477198.8675055*T + 0.0087414*T*T + T*T*T/69699 - T*T*T*T/14712000);
+  const F  = normalizeDeg(93.2720950 + 483202.0175233*T - 0.0036539*T*T - T*T*T/3526000 + T*T*T*T/863310000);
+  const s = x => Math.sin(degToRad(x));
+  const corr =
+    6.289 * s(Mp) +
+    1.274 * s(2*D - Mp) +
+    0.658 * s(2*D) +
+    0.214 * s(2*Mp) -
+    0.186 * s(M) -
+    0.114 * s(2*F) +
+    0.059 * s(2*D - 2*Mp) +
+    0.057 * s(2*D - M - Mp) +
+    0.053 * s(2*D + Mp) +
+    0.046 * s(2*D - M) +
+    0.041 * s(M - Mp) -
+    0.035 * s(D) -
+    0.031 * s(M + Mp) -
+    0.015 * s(2*F - 2*D) +
+    0.011 * s(2*D - M - 2*Mp);
+  return normalizeDeg(Lp + corr);
 }
-function buildProxyRequest(proxy, target){
-  // 入力欄の末尾が = または ? なら単純連結、それ以外は target をURL部品として付ける。
-  if(proxy.endsWith('=') || proxy.endsWith('?')) return proxy + encodeURIComponent(target);
-  return proxy + encodeURIComponent(target);
+function getTideCycleMethod(){
+  return $('tideCycleMethod')?.value === 'jma' ? 'jma' : 'mirc';
 }
-async function fetchTextNoRetry(url){
-  const r = await fetch(url, {cache:'no-store'});
-  if(!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return await r.text();
+function tideCycleMethodLabel(method=getTideCycleMethod()){
+  return method === 'jma' ? '気象庁方式' : 'MIRC方式';
 }
-async function fetchTide736Text(url){
-  try{
-    log('tide736 直接取得を試行');
-    return await fetchTextNoRetry(url);
-  }catch(e){
-    log('tide736 直接取得失敗: '+e.message);
+function tideCycleMethodShortLabel(method=getTideCycleMethod()){
+  return method === 'jma' ? '気象庁' : 'MIRC';
+}
+function tideCycleMethodNote(method=getTideCycleMethod()){
+  if(method === 'jma') return '潮回りは気象庁方式による目安です。各日12:00 JST基準で判定します。MIRC方式・他の潮見表サイトとは1日前後ずれる場合があります。';
+  return '潮回りはMIRC方式による目安です。HTML内で計算した目安であり、公式の潮見表と完全に一致するとは限りません。気象庁方式・他の潮見表サイトとは1日前後ずれる場合があります。';
+}
+function tideCycleTimeText(method=getTideCycleMethod()){
+  if(method === 'jma') return '各日 12:00 JST';
+  return 'HTML内計算の目安';
+}
+function updateTideCycleMethodNote(){
+  const el = $('tideCycleMethodNote');
+  if(el) el.textContent = tideCycleMethodNote();
+  const timeEl = $('tideCycleTime');
+  if(timeEl) timeEl.value = tideCycleTimeText();
+}
+function tideCycleNameByAngle(angle, method=getTideCycleMethod()){
+  const a = normalizeDeg(angle);
+  if(method === 'jma'){
+    if(a >= 348 || a < 36) return '大潮';
+    if(a < 72) return '中潮';
+    if(a < 108) return '小潮';
+    if(a < 120) return '長潮';
+    if(a < 132) return '若潮';
+    if(a < 168) return '中潮';
+    if(a < 216) return '大潮';
+    if(a < 252) return '中潮';
+    if(a < 288) return '小潮';
+    if(a < 300) return '長潮';
+    if(a < 312) return '若潮';
+    return '中潮';
   }
-  const errors = [];
-  for(const proxy of tide736ProxyList()){
-    const req = buildProxyRequest(proxy, url);
-    try{
-      log('tide736 プロキシ試行: '+proxy);
-      return await fetchTextNoRetry(req);
-    }catch(e){
-      errors.push(`${proxy} -> ${e.message}`);
-      log('tide736 プロキシ失敗: '+proxy+' / '+e.message);
-    }
-  }
-  throw new Error(errors.length ? errors.join(' / ') : '利用可能なtide736プロキシ候補なし');
+  if(a >= 343 || a < 31) return '大潮';
+  if(a < 67) return '中潮';
+  if(a < 103) return '小潮';
+  if(a < 115) return '長潮';
+  if(a < 127) return '若潮';
+  if(a < 163) return '中潮';
+  if(a < 211) return '大潮';
+  if(a < 247) return '中潮';
+  if(a < 283) return '小潮';
+  if(a < 295) return '長潮';
+  if(a < 307) return '若潮';
+  return '中潮';
 }
-async function fetchTideCycleFromTide736(dateStr){
-  const url = tide736Url(dateStr);
-  try{
-    log(`潮回り取得 tide736: ${url}`);
-    const text = await fetchTide736Text(url);
-    const data = JSON.parse(normalizeTide736JsonText(text));
-    if(String(data.status) !== '1' && data.status !== 1) throw new Error(data.message || 'status != 1');
-    const chart = data?.tide?.chart || {};
-    const item = chart[dateStr] || Object.values(chart)[0];
-    const moon = item?.moon || {};
-    const title = moon.title || '';
-    if(!title) throw new Error('moon.titleなし');
-    log(`潮回り取得成功 tide736: ${dateStr} ${title}${moon.age !== undefined ? ' 月齢 '+moon.age : ''}`);
-    return {dateStr, title, html:`<b>${esc(title)}</b>`};
-  }catch(e){
-    log(`潮回り取得失敗 tide736 ${dateStr}: ${e.message}`);
-    return {dateStr, title:'取得失敗', html:`<span class="warn">${esc(dateStr)} tide736取得失敗</span>`};
-  }
+function calcTideCycle(dateStr, method=getTideCycleMethod()){
+  const jd = julianDayForJstNoon(dateStr);
+  const sun = sunEclipticLongitude(jd);
+  const moon = moonEclipticLongitude(jd);
+  const diff = normalizeDeg(moon - sun);
+  const title = tideCycleNameByAngle(diff, method);
+  return {dateStr, title, angle:diff, method, html:`<b>${esc(title)}</b>`};
 }
-async function fetchTideCyclesForDates(dateList){
+function fetchTideCyclesForDates(dateList, method=getTideCycleMethod()){
   const unique = Array.from(new Set(dateList.filter(Boolean)));
-  const items = [];
-  for(const d of unique){
-    items.push(await fetchTideCycleFromTide736(d));
-  }
-  return items;
+  return unique.map(d => calcTideCycle(d, method));
 }
+
 function formatDateShort(dateStr){
   const [y,m,d] = String(dateStr).split('-').map(Number);
   return `${m}/${d}`;
@@ -587,18 +613,8 @@ function cycleSubset(cycles, dates){
   const set = new Set(dates || []);
   return (cycles || []).filter(c => set.has(c.dateStr));
 }
-async function fetchTideCyclesForDatesCached(dateList){
-  const result = [];
-  for(const d of dateList){
-    if(TIDE_CYCLE_CACHE.has(d)){
-      result.push(TIDE_CYCLE_CACHE.get(d));
-    }else{
-      const c = await fetchTideCycleFromTide736(d);
-      TIDE_CYCLE_CACHE.set(d, c);
-      result.push(c);
-    }
-  }
-  return result;
+function fetchTideCyclesForDatesCached(dateList){
+  return fetchTideCyclesForDates(dateList, getTideCycleMethod());
 }
 async function fetchStationTideHtmlCached(code, startDate, endDate){
   const key = `${code}|${startDate}|${endDate}`;
@@ -633,13 +649,13 @@ async function fetchTides(){
     displayDateList = [dateStr];
   }
 
-  const allCycles = await fetchTideCyclesForDatesCached(fetchDateList);
+  const allCycles = fetchTideCyclesForDatesCached(fetchDateList);
   const cycles = cycleSubset(allCycles, displayDateList);
   const cycleSummary = formatCycleSummary(cycles);
   if(mode === 'after'){
-    $('summary').innerHTML = `対象: 地震発生後の潮汐 / 基準時刻: <span class="mono">${esc(formatMdHm(threshold))}</span> / 表示期間: ${afterHours}時間 / 潮回り: ${cycleSummary || '未取得'}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
+    $('summary').innerHTML = `対象: 地震発生後の潮汐 / 基準時刻: <span class="mono">${esc(formatMdHm(threshold))}</span> / 表示期間: ${afterHours}時間 / 潮回り: ${cycleSummary || '未計算'} / 判定: ${esc(tideCycleMethodLabel())}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
   }else{
-    $('summary').innerHTML = `対象: 指定日の潮汐 / 指定日: <span class="mono">${esc(dateStr)}</span> / 潮回り: ${cycleSummary || '未取得'}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
+    $('summary').innerHTML = `対象: 指定日の潮汐 / 指定日: <span class="mono">${esc(dateStr)}</span> / 潮回り: ${cycleSummary || '未計算'} / 判定: ${esc(tideCycleMethodLabel())}<br>震央 <span class="mono">${Number($('lat').value).toFixed(3)}, ${Number($('lon').value).toFixed(3)}</span> に近い${count}地点 / 取得範囲: ${esc(startForUrl)}〜${esc(endForUrl)} / 地点リスト: ${stationsReady ? '全国版' : '予備版'} / 再表示: キャッシュ優先`;
   }
 
   CURRENT_ROWS = ns.map(s => ({s, hilo:{cycle:cycleSummary}, status:'取得待ち'}));
@@ -775,6 +791,52 @@ function findQuakeTime(obj){
     'reportDatetime','ReportDateTime','at','dateTime','time'
   ], /^(OriginTime|ArrivalTime|ReportDateTime|TargetDateTime|originTime|dateTime|time|at)$/i);
 }
+
+function formatMagnitudeValue(v){
+  if(v === undefined || v === null) return '';
+  const t = toHalfWidth(v).trim();
+  if(!t || /^nan$/i.test(t) || t === '-' || t === '*' || t === '不明') return '';
+  const m = t.match(/(?:M|マグニチュード)?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if(m) return `M${m[1]}`;
+  return t.startsWith('M') ? t : `M${t}`;
+}
+function findQuakeMagnitude(obj){
+  const v = findFirstString(obj, [
+    'Body.Earthquake.Magnitude',
+    'Body.Earthquake.Hypocenter.Magnitude',
+    'earthquake.magnitude',
+    'hypocenter.magnitude',
+    'magnitude','Magnitude','mag','Mag'
+  ], /^(Magnitude|magnitude|mag|Mag)$/i);
+  return formatMagnitudeValue(v);
+}
+function formatMaxIntensityValue(v){
+  if(v === undefined || v === null) return '';
+  let t = toHalfWidth(v).trim();
+  if(!t || /^nan$/i.test(t) || t === '-' || t === '*' || t === '不明') return '';
+  t = t.replace(/\s+/g,'');
+  if(t.startsWith('震度')) t = t.replace(/^震度/, '');
+  const map = {
+    '0':'震度0','1':'震度1','2':'震度2','3':'震度3','4':'震度4','5-':'震度5弱','5弱':'震度5弱','5+':'震度5強','5強':'震度5強',
+    '6-':'震度6弱','6弱':'震度6弱','6+':'震度6強','6強':'震度6強','7':'震度7'
+  };
+  if(map[t]) return map[t];
+  const m = t.match(/^(5|6)(弱|強)$/);
+  if(m) return `震度${m[1]}${m[2]}`;
+  if(/^[0-7]$/.test(t)) return `震度${t}`;
+  return t.startsWith('震度') ? t : `震度${t}`;
+}
+function findMaxIntensity(obj){
+  const v = findFirstString(obj, [
+    'Body.Intensity.Observation.MaxInt',
+    'Body.Intensity.MaxInt',
+    'Body.Earthquake.MaxInt',
+    'earthquake.maxInt',
+    'earthquake.maxIntensity',
+    'maxInt','MaxInt','maxIntensity','MaxIntensity','int','Int'
+  ], /^(MaxInt|maxInt|MaxIntensity|maxIntensity|最大震度|int|Int)$/i);
+  return formatMaxIntensityValue(v);
+}
 function jstDateFromAny(s){
   const raw = String(s || '').trim();
   if(!raw){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -800,6 +862,8 @@ function setQuakeInfo(obj, label=''){
   const c = findCoordinateInObj(obj);
   const name = findQuakeName(obj);
   const dt = findQuakeTime(obj);
+  const mag = findQuakeMagnitude(obj);
+  const maxInt = findMaxIntensity(obj);
   if(c){
     $('lat').value = c.lat.toFixed(3);
     $('lon').value = c.lon.toFixed(3);
@@ -816,6 +880,8 @@ function setQuakeInfo(obj, label=''){
   $('quakeInfo').innerHTML =
     `<span class="pill">震源: ${esc(name)}</span>`+
     `<span class="pill">時刻: ${esc(dt || '不明')}</span>`+
+    `<span class="pill">マグニチュード: ${esc(mag || '不明')}</span>`+
+    `<span class="pill">最大震度: ${esc(maxInt || '不明')}</span>`+
     `<span class="pill ${c ? '' : 'warn'}">座標: ${c ? `${c.lat.toFixed(3)}, ${c.lon.toFixed(3)}` : '取得できません'}</span>`+
     (label ? `<span class="pill">${esc(label)}</span>` : '');
   return !!c;
@@ -882,8 +948,13 @@ for(const id of ['presentationMode','showDistance','showTideCycle','showSourceSt
 for(const id of ['tideDisplayMode','afterHours','eventCount']){
   $(id).addEventListener('change', () => { if(CURRENT_ROWS.length) fetchTides(); });
 }
+$('tideCycleMethod').addEventListener('change', () => {
+  updateTideCycleMethodNote();
+  if(CURRENT_ROWS.length) fetchTides();
+});
 $('stationCount').addEventListener('change', showNearestOnly);
 setResultHeader();
+updateTideCycleMethodNote();
 loadStations().then(showNearestOnly);
 </script>
 </body>
