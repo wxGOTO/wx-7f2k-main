@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>日の出・日の入 等時刻線 地理院地図版（日時選択）</title>
+<title>日の出・日の入 等時刻線 地理院地図版</title>
 
 <!-- Created by wxGOTO -->
 
@@ -47,7 +47,7 @@ button:hover{background:#2f4059}
 <div id="map"><div id="tiles"></div><canvas id="overlay"></canvas></div>
 <div class="panel">
   <h1><span>日の出・日の入 等時刻線</span><button id="panelClose" title="閉じる" aria-label="閉じる">×</button></h1>
-  <div class="row"><label>日時</label><input id="datetime" type="datetime-local" step="60"></div>
+  <div class="row"><label>日付</label><input id="date" type="date"></div>
   <div class="row"><label>間隔</label><select id="interval"><option value="5">5分ごと</option><option value="10" selected>10分ごと</option><option value="15">15分ごと</option><option value="20">20分ごと</option><option value="30">30分ごと</option></select></div>
   <div class="row"><label>表示</label><div class="checks">
     <label><input id="showRise" type="checkbox" checked>日の出線</label>
@@ -81,7 +81,7 @@ button:hover{background:#2f4059}
     <button data-fit="miyako">宮古・八重山</button>
   </div>
   <div id="status" class="status"></div>
-  <div class="note">画面内の各地点について、選択した日時の日付を基準に日の出時刻・日の入時刻を計算し、等時刻線として描きます。表示領域ボタンで地域別に移動できます。時刻はJSTです。HTML内で計算するので、元データは不要です。これは近似計算で、地形の陰や雲は反映しません。<br> Created by wxGOTO </div>
+  <div class="note">画面内の各地点について、選択した日付を基準に日の出時刻・日の入時刻を計算し、等時刻線として描きます。「日の出・日の入相当 -0.833°」で計算されています。表示領域ボタンで地域別に移動できます。時刻はJSTです。HTML内で計算するので、元データは不要です。これは近似計算で、地形の陰や雲は反映しません。<br> Created by wxGOTO </div>
 </div>
 <div class="zoomctl"><button id="zin">＋</button><button id="zout">−</button></div>
 <div class="legend"><div><span class="sw rise"></span>水色：日の出線</div><div><span class="sw set"></span>橙色：日の入線</div></div>
@@ -99,7 +99,7 @@ function rad(d){return d*Math.PI/180}
 function deg(r){return r*180/Math.PI}
 function norm180(x){return ((x+540)%360)-180}
 function formatMin(min){ if(!isFinite(min)) return '--:--'; min=((Math.round(min)%1440)+1440)%1440; const h=Math.floor(min/60), m=Math.round(min%60); return `${pad(h)}:${pad(m)}` }
-function setToday(){ const n=new Date(); $('datetime').value=`${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}T${pad(n.getHours())}:${pad(n.getMinutes())}`; renderAll(); }
+function setToday(){ const n=new Date(); $('date').value=`${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`; renderAll(); }
 setToday();
 
 function lonToX(lon,z){return (lon+180)/360*TILE_SIZE*Math.pow(2,z)}
@@ -168,7 +168,7 @@ function buildGrid(){
   const xs=[], ys=[];
   for(let x=0; x<=innerWidth+spacing; x+=spacing) xs.push(Math.min(x, innerWidth));
   for(let y=0; y<=innerHeight+spacing; y+=spacing) ys.push(Math.min(y, innerHeight));
-  const datePart=($('datetime').value || '').split('T')[0];
+  const datePart=$('date').value || '';
   const [y,m,d]=datePart.split('-').map(Number);
   const riseGrid=[], setGrid=[];
   let riseMin=Infinity, riseMax=-Infinity, setMin=Infinity, setMax=-Infinity;
@@ -274,10 +274,11 @@ function drawContourField(gridData, which, color){
   return {levels:count, range:`${formatMin(min)}〜${formatMin(max)}`};
 }
 
-function formatDateTimeValue(){
-  const v=$('datetime').value;
+function formatDateValue(){
+  const v=$('date').value;
   if(!v) return '--';
-  return v.replace('T',' ');
+  const [y,m,d]=v.split('-');
+  return `${y}/${m}/${d}`;
 }
 function renderOverlay(){
   canvas.width=innerWidth; canvas.height=innerHeight; ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -288,7 +289,7 @@ function renderOverlay(){
     let riseInfo={levels:0,range:'--'}, setInfo={levels:0,range:'--'};
     if($('showRise').checked) riseInfo=drawContourField(gridData,'rise','rgba(0,209,255,.98)');
     if($('showSet').checked) setInfo=drawContourField(gridData,'set','rgba(255,176,0,.98)');
-    $('status').innerHTML=`選択日時: ${formatDateTimeValue()} JST<br>日の出線: ${$('showRise').checked ? riseInfo.range+' / '+riseInfo.levels+'本' : '非表示'}<br>日の入線: ${$('showSet').checked ? setInfo.range+' / '+setInfo.levels+'本' : '非表示'}`;
+    $('status').innerHTML=`選択日付: ${formatDateValue()} JST<br>日の出線: ${$('showRise').checked ? riseInfo.range+' / '+riseInfo.levels+'本' : '非表示'}<br>日の入線: ${$('showSet').checked ? setInfo.range+' / '+setInfo.levels+'本' : '非表示'}`;
   }, 0);
 }
 function renderAll(){ renderTiles(); renderOverlay(); }
@@ -332,7 +333,7 @@ $('fitJapan').onclick=()=>fitTo('japan');
 $('fitWide').onclick=()=>fitTo('wide');
 document.querySelectorAll('[data-fit]').forEach(btn=>btn.addEventListener('click',()=>fitTo(btn.dataset.fit)));
 $('redrawBtn').onclick=renderAll;
-['datetime','interval','showRise','showSet','showLabels','basemap'].forEach(id=>$(id).addEventListener('change',renderAll));
+['date','interval','showRise','showSet','showLabels','basemap'].forEach(id=>$(id).addEventListener('change',renderAll));
 
 $('panelToggle').onclick=()=>{ document.body.classList.toggle('panelClosed'); setTimeout(renderSoon, 0); };
 $('panelClose').onclick=()=>{ document.body.classList.add('panelClosed'); setTimeout(renderSoon, 0); };
