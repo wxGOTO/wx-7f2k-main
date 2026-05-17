@@ -6,6 +6,7 @@
 <title>震央近傍任意地点 潮汐表示</title>
 
 <!-- Created by wxGOTO -->
+<!-- Presentation mode: station names 24px bold vertical-center -->
 
 <style>
 :root{--bg:#f6f7f9;--card:#fff;--ink:#1f2937;--muted:#667085;--line:#d0d5dd;--accent:#2563eb;--bad:#b42318;--ok:#027a48;--warn:#b54708;}
@@ -17,39 +18,46 @@ main{max-width:1120px;margin:0 auto;padding:14px}.card{background:var(--card);bo
 label{font-size:13px;color:var(--muted);display:block;margin-bottom:4px}.grid>div,.row>*{min-width:0}input,select,button,textarea{font:inherit;border:1px solid var(--line);border-radius:9px;padding:9px;background:white;box-sizing:border-box;width:100%;max-width:100%;min-width:0}
 input[type="date"]{display:block;width:100%;min-width:0;max-width:100%;-webkit-appearance:none;appearance:none;text-align:left}
 button{background:var(--accent);color:white;border-color:var(--accent);font-weight:700;cursor:pointer}button.secondary{background:white;color:var(--ink);border-color:var(--line)}button:disabled{opacity:.55;cursor:not-allowed}
-table{width:100%;border-collapse:collapse;font-size:14px;background:white}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:#f2f4f7;white-space:nowrap}.small{font-size:12px;color:var(--muted)}.warn{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.caution{color:var(--warn);font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.log{white-space:pre-wrap;background:#0b1020;color:#d1d5db;border-radius:10px;padding:10px;font-size:12px;max-height:260px;overflow:auto}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef4ff;color:#1d4ed8;font-size:12px;margin:2px 4px 2px 0}.nowrap{white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:18px;font-weight:800;line-height:1.28;background:white}th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}th{background:#f2f4f7;white-space:nowrap;font-weight:900}.small{font-size:13px;color:var(--muted)}.warn{color:var(--bad);font-weight:700}.ok{color:var(--ok);font-weight:700}.caution{color:var(--warn);font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.log{white-space:pre-wrap;background:#0b1020;color:#d1d5db;border-radius:10px;padding:10px;font-size:12px;max-height:260px;overflow:auto}.pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef4ff;color:#1d4ed8;font-size:12px;margin:2px 4px 2px 0}.nowrap{white-space:nowrap}
 
 .result-controls{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;padding:10px;background:#f9fafb;border:1px solid var(--line);border-radius:10px}
-.result-controls label{display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-size:13px;font-weight:700}
+.result-controls label{display:flex;align-items:center;gap:6px;margin:0;color:var(--ink);font-size:15px;font-weight:800}
 .result-controls input[type="checkbox"]{width:auto;margin:0;padding:0}
+
+/* PowerPointスクショ用：結果欄は縮小貼付でも読めるよう太字・大きめ */
+#summary,#resultTable,.result-controls,.tide-mode-controls{font-weight:800}
+#resultTable td,#resultTable th{font-weight:800}
+body.presentation-on #resultTable td,body.presentation-on #resultTable th{font-weight:900}
+body.presentation-on #resultTable .tide-line,body.presentation-on #resultTable .cycle-line{line-height:1.16}
 /* 潮回りは通常表示でも縦並びにする */
 #resultTable .cycle-list{display:flex;flex-direction:column;gap:1px;min-width:0}
 #resultTable .cycle-line{white-space:nowrap}
 
 /* 資料用表示は、スクショで余白が出すぎないように表幅を内容寄りにする */
 body.presentation-on main{max-width:1280px}
-body.presentation-on #resultTable{font-size:17px;width:auto;min-width:760px;max-width:100%;table-layout:auto}
-body.presentation-on #resultTable th,body.presentation-on #resultTable td{padding:7px 12px}
-body.presentation-on #resultTable th{background:#e5e7eb;color:#111827;font-weight:800}
+body.presentation-on #resultTable{font-size:22px;font-weight:900;line-height:1.22;width:auto;min-width:760px;max-width:100%;table-layout:auto}
+body.presentation-on #resultTable th,body.presentation-on #resultTable td{padding:4px 10px}
+body.presentation-on #resultTable th{background:#e5e7eb;color:#111827;font-weight:900}
 body.presentation-on #resultTable td{border-bottom:2px solid #d1d5db}
-body.presentation-on #resultTable td:first-child{font-weight:800;white-space:nowrap}
-body.presentation-on #summary{font-size:15px;color:#374151;margin-bottom:8px}
-body.presentation-on #resultTable td{line-height:1.38}
-body.presentation-on #resultTable .tide-list{display:flex;flex-direction:column;gap:1px;min-width:0}
+body.presentation-on #resultTable th,body.presentation-on #resultTable td{vertical-align:middle}
+body.presentation-on #resultTable td:first-child{font-size:28px;font-weight:900;white-space:nowrap;vertical-align:middle;line-height:1.05}
+body.presentation-on #summary{font-size:18px;color:#374151;margin-bottom:6px;font-weight:800;line-height:1.25}
+body.presentation-on #resultTable td{line-height:1.22;font-weight:900}
+body.presentation-on #resultTable .tide-list{display:flex;flex-direction:column;gap:0;min-width:0}
 body.presentation-on #resultTable .tide-line{white-space:nowrap}
-body.presentation-on #resultTable .cycle-list{gap:1px}
+body.presentation-on #resultTable .cycle-list{gap:0}
 
 body.presentation-on .result-controls{gap:10px;padding:7px 10px;margin-top:8px}
-body.presentation-on .result-controls label{font-size:12px}
+body.presentation-on .result-controls label{font-size:15px;font-weight:900}
 body.presentation-on .tide-mode-controls{grid-template-columns:1fr 1fr 1fr;gap:8px!important;margin-top:8px!important}
-body.presentation-on .tide-mode-controls label{font-size:12px;margin-bottom:2px}
-body.presentation-on .tide-mode-controls select{padding:7px 8px}
-body.presentation-on #resultTable.cols-5 th:nth-child(1),body.presentation-on #resultTable.cols-5 td:nth-child(1){width:86px}
+body.presentation-on .tide-mode-controls label{font-size:15px;margin-bottom:2px;font-weight:900}
+body.presentation-on .tide-mode-controls select{padding:5px 8px;font-size:18px;font-weight:800}
+body.presentation-on #resultTable.cols-5 th:nth-child(1),body.presentation-on #resultTable.cols-5 td:nth-child(1){width:100px}
 body.presentation-on #resultTable.cols-5 th:nth-child(2),body.presentation-on #resultTable.cols-5 td:nth-child(2){width:150px}
 body.presentation-on #resultTable.cols-5 th:nth-child(3),body.presentation-on #resultTable.cols-5 td:nth-child(3){width:230px}
 body.presentation-on #resultTable.cols-5 th:nth-child(4),body.presentation-on #resultTable.cols-5 td:nth-child(4){width:230px}
 body.presentation-on #resultTable.cols-5 th:nth-child(5),body.presentation-on #resultTable.cols-5 td:nth-child(5){width:150px}
-body.presentation-on #resultTable.cols-4 th:nth-child(1),body.presentation-on #resultTable.cols-4 td:nth-child(1){width:90px}
+body.presentation-on #resultTable.cols-4 th:nth-child(1),body.presentation-on #resultTable.cols-4 td:nth-child(1){width:100px}
 body.presentation-on #resultTable.cols-4 th:nth-child(2),body.presentation-on #resultTable.cols-4 td:nth-child(2){width:230px}
 body.presentation-on #resultTable.cols-4 th:nth-child(3),body.presentation-on #resultTable.cols-4 td:nth-child(3){width:230px}
 body.presentation-on #resultTable.cols-4 th:nth-child(4),body.presentation-on #resultTable.cols-4 td:nth-child(4){width:150px}
