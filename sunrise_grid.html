@@ -55,8 +55,8 @@ button:hover{background:#2f4059}
 <div class="panel" id="controlPanel">
 <h1><span>夜の境界線・地理院地図版</span><button id="panelClose" title="閉じる" aria-label="閉じる">×</button></h1>
 <div class="row"><label>日時</label><div class="timegrid"><input id="date" type="date"><input id="time" type="time" step="60"></div></div>
-<div class="row"><label>境界</label><select id="altitude"><option value="0">太陽高度 0.0°</option><option value="-0.833" selected>日の出・日の入相当 -0.833°</option><option value="-6">市民薄明 -6°</option><option value="-12">航海薄明 -12°</option><option value="-18">天文薄明 -18°</option></select></div>
-<div class="row"><label>表示</label><div class="checks"><label><input id="split" type="checkbox" checked>日の出側・日の入側を色分け</label><label><input id="shade" type="checkbox" checked>夜側を薄く塗る</label><label><input id="showLabels" type="checkbox" checked>線上に時刻表示</label></div></div>
+<div class="row"><label>境界</label><select id="altitude"><option value="0">太陽高度 0.0°</option><option value="-0.833" selected>日出・日入相当 -0.833°</option><option value="-6">市民薄明 -6°</option><option value="-12">航海薄明 -12°</option><option value="-18">天文薄明 -18°</option></select></div>
+<div class="row"><label>表示</label><div class="checks"><label><input id="split" type="checkbox" checked>日出側・日入側を色分け</label><label><input id="shade" type="checkbox" checked>夜側を薄く塗る</label><label><input id="showLabels" type="checkbox" checked>線上に時刻表示</label></div></div>
 <div class="row"><label>時刻格子</label><div class="checks"><label><input id="showTimeGrid" type="checkbox">格子線を表示</label><label><input id="showGridLabels" type="checkbox" checked>格子線ラベル</label></div></div>
 <div class="row"><label>格子設定</label><div class="gridopts three"><select id="gridInterval"><option value="10">10分ごと</option><option value="20">20分ごと</option><option value="30">30分ごと</option><option value="custom">任意</option></select><input id="gridCustom" type="number" min="1" max="180" step="1" value="15" title="任意の分間隔"><input id="gridCount" type="number" min="1" max="12" step="1" value="6" title="片側の本数"></div></div>
 <div class="row"><label>方向</label><select id="gridDirection"><option value="after">指定時刻の後だけ（＋）</option><option value="both">指定時刻の前後（−／＋）</option><option value="before">指定時刻の前だけ（−）</option></select></div>
@@ -82,10 +82,10 @@ button:hover{background:#2f4059}
   <button data-fit="miyako">宮古・八重山</button>
 </div>
 <div id="status" class="status"></div>
-<div class="note">これは基準地点の日の出・日の入ではなく、指定時刻における地球全体の明暗境界です。標準は一般的な日の出・日の入に近い -0.833° です。0.0°は理論上の昼夜境界、-6°/-12°/-18°は薄明の境界です。<br>Created by wxGOTO </div>
+<div class="note">これは基準地点の日出・日入ではなく、指定時刻における地球全体の明暗境界です。標準は一般的な日出・日入に近い -0.833° です。0.0°は理論上の昼夜境界、-6°/-12°/-18°は薄明の境界です。<br>Created by wxGOTO </div>
 </div>
 <div class="zoomctl"><button id="zin">＋</button><button id="zout">−</button></div>
-<div class="legend"><div><span class="sw boundary"></span>白：夜の境界線</div><div><span class="sw rise"></span>水色：日の出側</div><div><span class="sw set"></span>橙色：日の入側</div><div>破線：時刻格子線</div></div>
+<div class="legend"><div><span class="sw boundary"></span>白：夜の境界線</div><div><span class="sw rise"></span>水色：日出側</div><div><span class="sw set"></span>橙色：日入側</div><div>破線：時刻格子線</div></div>
 <div class="attr">出典：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院 地理院タイル</a></div>
 <script>
 (()=>{
@@ -213,13 +213,13 @@ function drawTimeGrid(baseDate, alt){
         let part=[seg[0]], flag=seg[0].rising;
         for(let i=1;i<seg.length;i++){
           if(seg[i].rising!==flag){
-            if(part.length>1){const c=flag?'rgba(0,209,255,.38)':'rgba(255,176,0,.38)'; drawPath(part,c,2,true); drawSmallGridLabel(part,label,c)}
+            if(part.length>1){const c=flag?'rgba(0,209,255,.56)':'rgba(255,176,0,.56)'; drawPath(part,c,3,true); drawSmallGridLabel(part,label,c)}
             part=[seg[i-1],seg[i]]; flag=seg[i].rising;
           }else part.push(seg[i]);
         }
-        if(part.length>1){const c=flag?'rgba(0,209,255,.38)':'rgba(255,176,0,.38)'; drawPath(part,c,2,true); drawSmallGridLabel(part,label,c)}
+        if(part.length>1){const c=flag?'rgba(0,209,255,.56)':'rgba(255,176,0,.56)'; drawPath(part,c,3,true); drawSmallGridLabel(part,label,c)}
       }else{
-        drawPath(seg,'rgba(255,255,255,.34)',2,true); drawSmallGridLabel(seg,label,'rgba(255,255,255,.55)');
+        drawPath(seg,'rgba(255,255,255,.52)',3,true); drawSmallGridLabel(seg,label,'rgba(255,255,255,.68)');
       }
     }
   }
@@ -287,7 +287,7 @@ function placeSegmentLabels(parts){
     const kind=item.rising?'rise':'set';
     if(maxPerColor[kind]<=0) continue;
     const mid=visible[Math.floor(visible.length/2)];
-    const baseText=item.rising?`日の出 ${timeText}`:`日の入 ${timeText}`;
+    const baseText=item.rising?`日出 ${timeText}`:`日入 ${timeText}`;
     const text=suffix?`${baseText}\n${suffix}`:baseText;
     const border=item.rising?'rgba(0,209,255,.98)':'rgba(255,176,0,.98)';
     ctx.font='600 12px -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif';
